@@ -80,8 +80,8 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
-      <button aria-label="Cerrar" onClick={onClose} className="absolute inset-0 bg-ink/50 cursor-pointer" />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-t-2xl border-t-2 border-ink bg-paper p-5 pb-8">
+      <button aria-label="Cerrar" onClick={onClose} className="backdrop-button absolute inset-0 bg-ink/50 cursor-pointer" />
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-t-2xl border-t-2 border-ink bg-paper p-5 pb-8 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold uppercase tracking-wide">Nuevo destino</h2>
           <button

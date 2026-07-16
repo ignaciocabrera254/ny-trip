@@ -135,7 +135,7 @@ export default function HoyPage() {
               href={googleMapsDirectionsUrl([HOME, ...dayStops.map((s) => ({ lat: s.lat, lng: s.lng }))])}
               target="_blank"
               rel="noreferrer"
-              className="flex h-11 items-center rounded-full bg-cta px-4 text-xs font-bold uppercase text-cta-foreground cursor-pointer"
+              className="flex h-11 items-center rounded-full bg-cta px-4 text-xs font-bold uppercase text-cta-foreground cursor-pointer transition-transform duration-150 active:scale-[0.98]"
             >
               Google Maps
             </a>

@@ -43,6 +43,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Visible focus ring everywhere, keyboard/switch-control only (no mouse-click ring). */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+/* Tactile press feedback on every native button, matching the outdoors/one-hand-use brief.
+   Excludes full-bleed sheet backdrops, where a scaled edge would flash a visible gap. */
+button:not(:disabled):not(.backdrop-button) {
+  transition: transform 150ms ease-out;
+}
+button:not(:disabled):not(.backdrop-button):active {
+  transform: scale(0.98);
+}
+
 /* Leaflet ships its own CSS that assumes no reset; keep controls visible on our high-contrast theme. */
 .leaflet-container {
   font-family: var(--font-sans);

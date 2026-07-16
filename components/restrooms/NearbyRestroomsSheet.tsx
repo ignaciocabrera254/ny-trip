@@ -46,9 +46,9 @@ export default function NearbyRestroomsSheet({ onClose, restrooms }: Props) {
       <button
         aria-label="Cerrar"
         onClick={onClose}
-        className="absolute inset-0 bg-ink/50 cursor-pointer"
+        className="backdrop-button absolute inset-0 bg-ink/50 cursor-pointer"
       />
-      <div className="relative z-10 w-full max-w-lg rounded-t-2xl border-t-2 border-ink bg-paper p-5 pb-8 max-h-[80vh] overflow-y-auto">
+      <div className="relative z-10 w-full max-w-lg rounded-t-2xl border-t-2 border-ink bg-paper p-5 pb-8 max-h-[80vh] overflow-y-auto shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold uppercase tracking-wide">Baños cerca</h2>
           <button
@@ -96,7 +96,7 @@ export default function NearbyRestroomsSheet({ onClose, restrooms }: Props) {
                   href={googleMapsWalkingUrl(r)}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-cta px-4 text-sm font-bold text-cta-foreground cursor-pointer"
+                  className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-cta px-4 text-sm font-bold text-cta-foreground cursor-pointer transition-transform duration-150 active:scale-[0.98]"
                 >
                   <Navigation size={16} aria-hidden />
                   Ir
