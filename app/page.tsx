@@ -1,65 +1,168 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMemo, useState } from "react";
+import { Route, ToiletIcon, TriangleAlert } from "lucide-react";
+import DynamicTripMap from "@/components/map/DynamicTripMap";
+import type { MapStop } from "@/components/map/TripMap";
+import DaySelector from "@/components/day/DaySelector";
+import StopList from "@/components/day/StopList";
+import NearbyRestroomsSheet from "@/components/restrooms/NearbyRestroomsSheet";
+import { useTripData } from "@/lib/useTripData";
+import { optimizeDay, totalRouteKm } from "@/lib/geo/routeOptimize";
+import { googleMapsDirectionsUrl } from "@/lib/maps/googleMapsLink";
+import { CATEGORY_COLOR, HOME } from "@/lib/types";
+
+function pickDefaultDayId(days: { id: string; date: string }[]): string | null {
+  if (days.length === 0) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const exact = days.find((d) => d.date === today);
+  if (exact) return exact.id;
+  const upcoming = days.find((d) => d.date >= today);
+  return (upcoming ?? days[days.length - 1]).id;
+}
+
+export default function HoyPage() {
+  const {
+    days,
+    destinations,
+    restrooms,
+    loading,
+    updateDestination,
+    reorderDestinations,
+  } = useTripData();
+
+  const [manualDayId, setManualDayId] = useState<string | null>(null);
+  const [showRestroomLayer, setShowRestroomLayer] = useState(false);
+  const [restroomSheetOpen, setRestroomSheetOpen] = useState(false);
+
+  const defaultDayId = useMemo(() => pickDefaultDayId(days), [days]);
+  const selectedDayId = manualDayId ?? defaultDayId;
+
+  const dayStops = useMemo(
+    () => destinations.filter((d) => d.day_id === selectedDayId),
+    [destinations, selectedDayId]
+  );
+
+  const hasSunsetSpot = dayStops.some((s) => s.is_sunset_spot);
+  const totalKm = totalRouteKm(HOME, dayStops);
+
+  const mapStops: MapStop[] = dayStops.map((s) => ({
+    id: s.id,
+    position: { lat: s.lat, lng: s.lng },
+    label: s.name,
+    color: CATEGORY_COLOR[s.category],
+    isSunsetSpot: s.is_sunset_spot,
+    popup: s.name,
+  }));
+
+  async function handleOptimize() {
+    if (!selectedDayId) return;
+    const optimized = optimizeDay(HOME, dayStops);
+    await reorderDestinations(optimized.map((s) => s.id));
+  }
+
+  async function handleMove(id: string, direction: "up" | "down") {
+    const index = dayStops.findIndex((s) => s.id === id);
+    const swapWith = direction === "up" ? index - 1 : index + 1;
+    if (swapWith < 0 || swapWith >= dayStops.length) return;
+    const reordered = [...dayStops];
+    [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+    await reorderDestinations(reordered.map((s) => s.id));
+  }
+
+  const mapCenter = dayStops[0] ? { lat: dayStops[0].lat, lng: dayStops[0].lng } : HOME;
+
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center text-ink/60">
+        Cargando itinerario…
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="flex flex-col">
+      <header className="flex items-center justify-between border-b-2 border-ink px-4 py-3">
+        <h1 className="text-lg font-black uppercase tracking-tight">NY Trip Planner</h1>
+      </header>
+
+      <DaySelector days={days} selectedDayId={selectedDayId} onSelect={setManualDayId} />
+
+      {dayStops.length > 0 && !hasSunsetSpot && (
+        <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border-2 border-danger bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
+          <TriangleAlert size={18} aria-hidden />
+          Falta sunset spot para este día
+        </div>
+      )}
+
+      <div className="relative h-[38vh] w-full shrink-0 border-y border-border">
+        <DynamicTripMap
+          center={mapCenter}
+          origin={HOME}
+          stops={mapStops}
+          drawRoute
+          restrooms={restrooms}
+          showRestrooms={showRestroomLayer}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <button
+          onClick={() => setShowRestroomLayer((v) => !v)}
+          aria-pressed={showRestroomLayer}
+          aria-label="Mostrar u ocultar baños en el mapa"
+          className={`absolute right-3 top-3 z-[400] flex h-11 items-center gap-1.5 rounded-full border-2 border-ink px-3 text-xs font-bold uppercase cursor-pointer ${
+            showRestroomLayer ? "bg-ink text-paper" : "bg-paper text-ink"
+          }`}
+        >
+          <ToiletIcon size={16} aria-hidden />
+          WC
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+        <p className="text-sm text-ink/70">
+          {totalKm.toFixed(1)} km <span className="text-ink/50">aprox. en línea recta</span>
+        </p>
+        <div className="flex shrink-0 gap-2">
+          <button
+            onClick={handleOptimize}
+            disabled={dayStops.length < 2}
+            className="flex h-11 items-center gap-1.5 rounded-full border-2 border-ink px-3 text-xs font-bold uppercase disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <Route size={16} aria-hidden />
+            Optimizar
+          </button>
+          {dayStops.length > 0 && (
+            <a
+              href={googleMapsDirectionsUrl([HOME, ...dayStops.map((s) => ({ lat: s.lat, lng: s.lng }))])}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-11 items-center rounded-full bg-cta px-4 text-xs font-bold uppercase text-cta-foreground cursor-pointer"
+            >
+              Google Maps
+            </a>
+          )}
         </div>
-      </main>
+      </div>
+
+      <StopList
+        stops={dayStops}
+        onToggleVisited={(id, visited) => updateDestination(id, { visited })}
+        onMove={handleMove}
+      />
+
+      <button
+        onClick={() => setRestroomSheetOpen(true)}
+        className="fixed bottom-20 right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-cta px-5 font-bold text-cta-foreground shadow-lg cursor-pointer"
+      >
+        <ToiletIcon size={20} aria-hidden />
+        Baños cerca
+      </button>
+
+      {restroomSheetOpen && (
+        <NearbyRestroomsSheet
+          onClose={() => setRestroomSheetOpen(false)}
+          restrooms={restrooms}
+        />
+      )}
     </div>
   );
 }

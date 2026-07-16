@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NY Trip Planner
 
-## Getting Started
+App personal para planificar el viaje a Nueva York (24 ago – 2 sep 2026). Mobile-first,
+pensada para usarse caminando desde el celular. Next.js 16 + Supabase + Leaflet/OSM,
+sin ninguna API de pago.
 
-First, run the development server:
+## Variables de entorno
+
+Copia `.env.example` a `.env.local` y completa:
+
+| Variable | Dónde conseguirla | Requerida |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API | Sí |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API | Sí |
+| `SUPABASE_URL` | igual que arriba | Solo para el seed de baños |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API (service role, secreta) | Solo para el seed de baños |
+| `APP_PASSWORD` | la que elijas | No — déjala vacía para dejar la app abierta |
+
+## Setup
+
+```bash
+npm install
+```
+
+### 1. Crear el proyecto en Supabase (plan free)
+
+En el SQL Editor de Supabase, corre en orden:
+
+```bash
+# pega y ejecuta el contenido de:
+supabase/schema.sql
+supabase/seed.sql
+```
+
+Esto crea las tablas `days`, `destinations`, `restrooms` con RLS abierta (app de un
+solo usuario) y precarga el itinerario base con las coordenadas ya geocodificadas.
+
+### 2. Seed de baños públicos (una sola vez, no en cada build)
+
+```bash
+SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npx tsx scripts/seed-restrooms.ts
+```
+
+Descarga el dataset oficial de NYC Open Data ("Public Restrooms") y lo inserta con
+`source='official'`. Puedes agregar baños propios desde la app (Planificar) — la
+categoría `custom` los distingue.
+
+### 3. Desarrollo local
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000). Vista "Hoy" por defecto; "Planificar" en la tab de abajo.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy en Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+vercel deploy
+```
 
-## Learn More
+Configura las mismas variables de entorno (`NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, opcionalmente `APP_PASSWORD`) en el proyecto de
+Vercel. `SUPABASE_SERVICE_ROLE_KEY` no hace falta en producción — solo se usa para
+correr el script de seed localmente.
 
-To learn more about Next.js, take a look at the following resources:
+## Notas de arquitectura
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Ruta optimizada**: nearest-neighbor con distancia Haversine desde la casa
+  (Jersey City), con el sunset spot del día siempre fijado como última parada
+  (`lib/geo/routeOptimize.ts`). Es una sugerencia — se puede reordenar a mano con
+  las flechas ↑↓.
+- **Mapas**: Leaflet + OpenStreetMap directo (sin `react-leaflet`), cargado solo en
+  cliente vía `next/dynamic`. Cero API keys.
+- **Geocodificación**: Nominatim, tanto en el buscador de "Planificar" como en el
+  seed inicial (coordenadas ya hardcodeadas en `supabase/seed.sql`).
+- **"Abrir en Google Maps"**: deep link `https://www.google.com/maps/dir/...`, sin
+  API — solo arma la URL con las paradas en orden.
+- **Auth**: ninguna por defecto. `proxy.ts` agrega Basic Auth opcional si seteas
+  `APP_PASSWORD` (Next.js 16 renombró `middleware.ts` a `proxy.ts`).

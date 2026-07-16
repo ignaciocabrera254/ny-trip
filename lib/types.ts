@@ -1,0 +1,61 @@
+export type DestinationCategory =
+  | "mirador"
+  | "monumento"
+  | "parque"
+  | "comida"
+  | "templo"
+  | "sunset"
+  | "otro";
+
+export type LatLng = { lat: number; lng: number };
+
+export type Day = {
+  id: string;
+  date: string;
+  title: string;
+  sort_order: number;
+};
+
+export type Destination = {
+  id: string;
+  day_id: string | null;
+  name: string;
+  category: DestinationCategory;
+  lat: number;
+  lng: number;
+  notes: string | null;
+  is_sunset_spot: boolean;
+  visited: boolean;
+  sort_order: number;
+};
+
+export type Restroom = {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  notes: string | null;
+  source: "official" | "custom";
+};
+
+export const CATEGORY_LABEL: Record<DestinationCategory, string> = {
+  mirador: "Mirador",
+  monumento: "Monumento",
+  parque: "Parque",
+  comida: "Comida",
+  templo: "Templo",
+  sunset: "Sunset",
+  otro: "Otro",
+};
+
+export const CATEGORY_COLOR: Record<DestinationCategory, string> = {
+  mirador: "#0039A6",
+  monumento: "#EE352E",
+  parque: "#00933C",
+  comida: "#FF6319",
+  templo: "#B933AD",
+  sunset: "#FCCC0A",
+  otro: "#A7A9AC",
+};
+
+export const HOME: LatLng = { lat: 40.7484, lng: -74.0465 };
