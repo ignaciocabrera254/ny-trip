@@ -1,6 +1,7 @@
 export type DestinationCategory =
   | "mirador"
   | "monumento"
+  | "museo"
   | "parque"
   | "comida"
   | "templo"
@@ -41,6 +42,7 @@ export type Restroom = {
 export const CATEGORY_LABEL: Record<DestinationCategory, string> = {
   mirador: "Mirador",
   monumento: "Monumento",
+  museo: "Museo",
   parque: "Parque",
   comida: "Comida",
   templo: "Templo",
@@ -51,6 +53,7 @@ export const CATEGORY_LABEL: Record<DestinationCategory, string> = {
 export const CATEGORY_COLOR: Record<DestinationCategory, string> = {
   mirador: "#0039A6",
   monumento: "#EE352E",
+  museo: "#996633",
   parque: "#00933C",
   comida: "#FF6319",
   templo: "#B933AD",

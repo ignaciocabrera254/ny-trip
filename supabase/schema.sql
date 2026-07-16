@@ -4,7 +4,7 @@ create extension if not exists "pgcrypto";
 
 do $$ begin
   create type destination_category as enum
-    ('mirador', 'monumento', 'parque', 'comida', 'templo', 'sunset', 'otro');
+    ('mirador', 'monumento', 'museo', 'parque', 'comida', 'templo', 'sunset', 'otro');
 exception
   when duplicate_object then null;
 end $$;
