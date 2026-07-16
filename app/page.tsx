@@ -7,6 +7,7 @@ import type { MapStop } from "@/components/map/TripMap";
 import DaySelector from "@/components/day/DaySelector";
 import StopList from "@/components/day/StopList";
 import NearbyRestroomsSheet from "@/components/restrooms/NearbyRestroomsSheet";
+import ErrorBanner from "@/components/ui/ErrorBanner";
 import { useTripData } from "@/lib/useTripData";
 import { optimizeDay, totalRouteKm } from "@/lib/geo/routeOptimize";
 import { googleMapsDirectionsUrl } from "@/lib/maps/googleMapsLink";
@@ -27,6 +28,8 @@ export default function HoyPage() {
     destinations,
     restrooms,
     loading,
+    error,
+    dismissError,
     updateDestination,
     reorderDestinations,
   } = useTripData();
@@ -87,6 +90,8 @@ export default function HoyPage() {
       </header>
 
       <DaySelector days={days} selectedDayId={selectedDayId} onSelect={setManualDayId} />
+
+      {error && <ErrorBanner message={error} onDismiss={dismissError} />}
 
       {dayStops.length > 0 && !hasSunsetSpot && (
         <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border-2 border-danger bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">

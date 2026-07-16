@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Plus, TriangleAlert } from "lucide-react";
 import DestinationCard from "@/components/planning/DestinationCard";
 import DestinationForm from "@/components/planning/DestinationForm";
+import ErrorBanner from "@/components/ui/ErrorBanner";
 import { useTripData } from "@/lib/useTripData";
 
 export default function PlanificarPage() {
@@ -11,6 +12,8 @@ export default function PlanificarPage() {
     days,
     destinations,
     loading,
+    error,
+    dismissError,
     addDestination,
     updateDestination,
     deleteDestination,
@@ -47,6 +50,8 @@ export default function PlanificarPage() {
       <header className="flex items-center justify-between border-b-2 border-ink px-4 py-3">
         <h1 className="text-lg font-black uppercase tracking-tight">Planificar</h1>
       </header>
+
+      {error && <ErrorBanner message={error} onDismiss={dismissError} />}
 
       <div className="flex flex-col gap-3 p-4">
         {days.map((day) => {

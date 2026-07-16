@@ -28,6 +28,7 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
   const [dayId, setDayId] = useState<string>(defaultDayId ?? "backlog");
   const [isSunsetSpot, setIsSunsetSpot] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -61,6 +62,7 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
   async function handleSubmit() {
     if (!picked || !name.trim()) return;
     setSaving(true);
+    setSubmitError(null);
     try {
       await onAdd({
         name: name.trim(),
@@ -73,6 +75,12 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
       });
       reset();
       onClose();
+    } catch (err) {
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "No se pudo guardar el destino.";
+      setSubmitError(message);
     } finally {
       setSaving(false);
     }
@@ -228,6 +236,12 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
               />
               Es el sunset spot del día
             </label>
+
+            {submitError && (
+              <p role="alert" className="text-sm font-semibold text-danger">
+                No se pudo guardar: {submitError}
+              </p>
+            )}
 
             <button
               onClick={handleSubmit}
