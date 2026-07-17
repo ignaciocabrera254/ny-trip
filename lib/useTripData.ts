@@ -7,7 +7,6 @@ function fetchAll() {
   return Promise.all([
     supabase.from("days").select("*").order("sort_order"),
     supabase.from("destinations").select("*").order("sort_order"),
-    supabase.from("restrooms").select("*"),
   ]);
 }
 
@@ -15,6 +14,7 @@ export function useTripData() {
   const [days, setDays] = useState<Day[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [restrooms, setRestrooms] = useState<Restroom[]>([]);
+  const [restroomsLoaded, setRestroomsLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,17 +22,26 @@ export function useTripData() {
   // subscription from the effect's point of view, not a synchronous setState.
   useEffect(() => {
     let cancelled = false;
-    fetchAll().then(([daysRes, destRes, restRes]) => {
+    fetchAll().then(([daysRes, destRes]) => {
       if (cancelled) return;
       if (daysRes.data) setDays(daysRes.data);
       if (destRes.data) setDestinations(destRes.data);
-      if (restRes.data) setRestrooms(restRes.data);
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Restrooms (~1000 rows) aren't needed for the first paint — only once the
+  // user opens the WC layer or the nearby-restrooms sheet — so they're fetched
+  // lazily instead of blocking "Cargando itinerario" on a query nobody asked for yet.
+  async function loadRestrooms() {
+    if (restroomsLoaded) return;
+    setRestroomsLoaded(true);
+    const { data } = await supabase.from("restrooms").select("*");
+    if (data) setRestrooms(data);
+  }
 
   // Optimistic local update, reverted if Supabase rejects the write so the UI
   // never claims a change stuck that didn't actually persist. Offline writes
@@ -53,14 +62,18 @@ export function useTripData() {
 
     try {
       const { error } = await supabase.from("destinations").update(patch).eq("id", id);
-      if (error) throw error;
-    } catch (err) {
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        queuePatch(id, patch);
-        return;
+      if (error) {
+        // A response came back from the server — a real application error
+        // (bad request, RLS, etc.), not a connectivity problem. Retrying
+        // later won't fix it, so surface it instead of queueing.
+        setDestinations(previous);
+        setError(error.message);
       }
-      setDestinations(previous);
-      setError(err instanceof Error ? err.message : "No se pudo guardar el cambio.");
+    } catch {
+      // supabase-js only throws here when the underlying fetch itself never
+      // completed (dropped signal, DNS, timeout) — that's connectivity by
+      // definition, even when navigator.onLine still (wrongly) says true.
+      queuePatch(id, patch);
     }
   }
 
@@ -115,6 +128,7 @@ export function useTripData() {
     days,
     destinations,
     restrooms,
+    loadRestrooms,
     loading,
     error,
     dismissError: () => setError(null),

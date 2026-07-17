@@ -32,6 +32,7 @@ export default function HoyPage() {
     days,
     destinations,
     restrooms,
+    loadRestrooms,
     loading,
     error,
     dismissError,
@@ -150,7 +151,10 @@ export default function HoyPage() {
             </span>
           )}
           <button
-            onClick={() => setRestroomSheetOpen(true)}
+            onClick={() => {
+              loadRestrooms();
+              setRestroomSheetOpen(true);
+            }}
             aria-label="Baños cerca"
             className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-ink bg-paper text-ink cursor-pointer hover:bg-muted transition-all active:scale-95"
           >
@@ -197,7 +201,10 @@ export default function HoyPage() {
           showRestrooms={showRestroomLayer}
         />
         <button
-          onClick={() => setShowRestroomLayer((v) => !v)}
+          onClick={() => {
+            loadRestrooms();
+            setShowRestroomLayer((v) => !v);
+          }}
           aria-pressed={showRestroomLayer}
           aria-label="Mostrar u ocultar baños en el mapa"
           className={`absolute right-3 top-3 z-[400] flex h-11 items-center gap-1.5 rounded-full border-2 border-ink px-3 text-xs font-bold uppercase cursor-pointer ${
