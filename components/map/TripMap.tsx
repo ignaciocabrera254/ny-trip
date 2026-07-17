@@ -25,6 +25,7 @@ type TripMapProps = {
   center: LatLng;
   zoom?: number;
   origin?: LatLng;
+  originLabel?: string;
   stops?: MapStop[];
   drawRoute?: boolean;
   restrooms?: Restroom[];
@@ -101,10 +102,24 @@ function MapPolyline({
   return null;
 }
 
+function MapUpdater({ center, zoom }: { center: LatLng; zoom: number }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (!map) return;
+    map.panTo(center);
+    map.setZoom(zoom);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, center.lat, center.lng, zoom]);
+
+  return null;
+}
+
 export default function TripMap({
   center,
   zoom = 13,
   origin,
+  originLabel = "Casa — Jersey City",
   stops = [],
   drawRoute = false,
   restrooms = [],
@@ -128,11 +143,10 @@ export default function TripMap({
       <APIProvider apiKey={apiKey}>
         <Map
           defaultCenter={center}
-          center={center}
           defaultZoom={zoom}
-          zoom={zoom}
           mapId="sundy_map_id" // required for AdvancedMarker
           disableDefaultUI
+          gestureHandling="greedy"
           onClick={(e) => {
             if (e.detail.latLng && onMapClick) {
               onMapClick({ lat: e.detail.latLng.lat, lng: e.detail.latLng.lng });
@@ -140,7 +154,7 @@ export default function TripMap({
           }}
         >
           {origin && (
-            <AdvancedMarker position={origin} title="Casa — Jersey City">
+            <AdvancedMarker position={origin} title={originLabel}>
               <HomeIcon />
             </AdvancedMarker>
           )}
@@ -174,6 +188,7 @@ export default function TripMap({
           )}
 
           <MapPolyline origin={origin} stops={stops} drawRoute={drawRoute} />
+          <MapUpdater center={center} zoom={zoom} />
         </Map>
       </APIProvider>
     </div>

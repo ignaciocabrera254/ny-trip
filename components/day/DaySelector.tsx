@@ -49,6 +49,11 @@ export default function DaySelector({ days, selectedDayId, onSelect }: Props) {
               {isToday && <span className="sr-only"> (hoy)</span>}
             </span>
             <span className="text-sm font-bold">{DAY_NUM.format(date)}</span>
+            {day.title && (
+              <span className="max-w-[72px] truncate text-[9px] font-semibold uppercase tracking-wide opacity-60">
+                {day.title}
+              </span>
+            )}
           </button>
         );
       })}

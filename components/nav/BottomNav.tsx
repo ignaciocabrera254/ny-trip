@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarRange, MapPinned } from "lucide-react";
+import { CalendarRange, ClipboardList, MapPinned } from "lucide-react";
 
 const TABS = [
   { href: "/", label: "Hoy", icon: MapPinned },
   { href: "/planificar", label: "Planificar", icon: CalendarRange },
+  { href: "/destinos", label: "Destinos", icon: ClipboardList },
 ];
 
 export default function BottomNav() {

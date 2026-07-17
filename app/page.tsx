@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { Route, ToiletIcon, TriangleAlert, Home } from "lucide-react";
+import { Route, ToiletIcon, TriangleAlert, Home, MapPin } from "lucide-react";
 import DynamicTripMap from "@/components/map/DynamicTripMap";
 import type { MapStop } from "@/components/map/TripMap";
 import DaySelector from "@/components/day/DaySelector";
 import StopList from "@/components/day/StopList";
 import NearbyRestroomsSheet from "@/components/restrooms/NearbyRestroomsSheet";
+import DayOriginPicker, { type DayOrigin } from "@/components/planning/DayOriginPicker";
 import ErrorBanner from "@/components/ui/ErrorBanner";
 import { useTripData } from "@/lib/useTripData";
 import { optimizeDay, totalRouteKm } from "@/lib/geo/routeOptimize";
@@ -36,6 +37,7 @@ export default function HoyPage() {
     loading,
     error,
     dismissError,
+    updateDay,
     updateDestination,
     reorderDestinations,
   } = useTripData();
@@ -45,6 +47,7 @@ export default function HoyPage() {
   const [restroomSheetOpen, setRestroomSheetOpen] = useState(false);
   const [dayStartTime, setDayStartTime] = useState("10:00");
   const [weather, setWeather] = useState<DailyWeather | null>(null);
+  const [originPickerOpen, setOriginPickerOpen] = useState(false);
 
   const defaultDayId = useMemo(() => pickDefaultDayId(days), [days]);
   const selectedDayId = manualDayId ?? defaultDayId;
@@ -54,15 +57,24 @@ export default function HoyPage() {
     [destinations, selectedDayId]
   );
 
+  const selectedDay = days.find((d) => d.id === selectedDayId);
+
+  // Each day can start from somewhere other than home (e.g. Port Authority,
+  // once the bus/train from NJ actually drops you there) — falls back to HOME
+  // whenever the day has no origin configured.
+  const dayOrigin =
+    selectedDay?.origin_lat != null && selectedDay?.origin_lng != null
+      ? { lat: selectedDay.origin_lat, lng: selectedDay.origin_lng }
+      : HOME;
+  const originLabel = selectedDay?.origin_label ?? "casa";
+
   const hasSunsetSpot = dayStops.some((s) => s.is_sunset_spot);
-  const totalKm = totalRouteKm(HOME, dayStops);
+  const totalKm = totalRouteKm(dayOrigin, dayStops);
   const stopsWithCost = dayStops.filter((s) => s.estimated_cost != null);
   const dayCostTotal =
     stopsWithCost.length > 0
       ? stopsWithCost.reduce((sum, s) => sum + (s.estimated_cost ?? 0), 0)
       : null;
-
-  const selectedDay = days.find((d) => d.id === selectedDayId);
 
   const sunsetInfo = useMemo(() => {
     if (!selectedDay) return null;
@@ -70,11 +82,11 @@ export default function HoyPage() {
     if (sunsetIndex === -1) return null;
     const spot = dayStops[sunsetIndex];
     const sunsetAt = sunsetTimeFor(selectedDay.date, spot);
-    const from = sunsetIndex > 0 ? dayStops[sunsetIndex - 1] : HOME;
-    const fromLabel = sunsetIndex > 0 ? dayStops[sunsetIndex - 1].name : "casa";
+    const from = sunsetIndex > 0 ? dayStops[sunsetIndex - 1] : dayOrigin;
+    const fromLabel = sunsetIndex > 0 ? dayStops[sunsetIndex - 1].name : originLabel;
     const deadline = departureDeadline(sunsetAt, haversineKm(from, spot));
     return { sunsetAt, deadline, fromLabel };
-  }, [selectedDay, dayStops]);
+  }, [selectedDay, dayStops, dayOrigin, originLabel]);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,8 +101,8 @@ export default function HoyPage() {
   }, [selectedDay]);
 
   const arrivalMinutes = useMemo(
-    () => estimateArrivals(HOME, dayStops, parseHHMM(dayStartTime)),
-    [dayStops, dayStartTime]
+    () => estimateArrivals(dayOrigin, dayStops, parseHHMM(dayStartTime)),
+    [dayOrigin, dayStops, dayStartTime]
   );
 
   const mapStops: MapStop[] = dayStops.map((s) => ({
@@ -107,7 +119,7 @@ export default function HoyPage() {
 
   async function handleOptimize() {
     if (!selectedDayId) return;
-    const optimized = optimizeDay(HOME, dayStops);
+    const optimized = optimizeDay(dayOrigin, dayStops);
     await reorderDestinations(optimized.map((s) => s.id));
   }
 
@@ -120,7 +132,16 @@ export default function HoyPage() {
     await reorderDestinations(reordered.map((s) => s.id));
   }
 
-  const mapCenter = dayStops[0] ? { lat: dayStops[0].lat, lng: dayStops[0].lng } : HOME;
+  const mapCenter = dayStops[0] ? { lat: dayStops[0].lat, lng: dayStops[0].lng } : dayOrigin;
+
+  async function handleSetOrigin(origin: DayOrigin) {
+    if (!selectedDayId) return;
+    await updateDay(selectedDayId, {
+      origin_lat: origin?.lat ?? null,
+      origin_lng: origin?.lng ?? null,
+      origin_label: origin?.label ?? null,
+    });
+  }
 
   function handleGoHome() {
     const open = (origin: { lat: number; lng: number } | null) =>
@@ -177,6 +198,16 @@ export default function HoyPage() {
 
       <DaySelector days={days} selectedDayId={selectedDayId} onSelect={setManualDayId} />
 
+      {selectedDayId && (
+        <button
+          onClick={() => setOriginPickerOpen(true)}
+          className="mx-4 mb-2 flex items-center gap-1.5 self-start text-sm text-slate-600 cursor-pointer"
+        >
+          <MapPin size={14} aria-hidden />
+          Origen: {originLabel === "casa" ? "Casa" : originLabel}
+        </button>
+      )}
+
       {error && <ErrorBanner message={error} onDismiss={dismissError} />}
 
       {dayStops.length > 0 && !hasSunsetSpot && (
@@ -199,7 +230,8 @@ export default function HoyPage() {
       <div className="relative h-[30vh] w-full shrink-0 border-y border-border">
         <DynamicTripMap
           center={mapCenter}
-          origin={HOME}
+          origin={dayOrigin}
+          originLabel={originLabel === "casa" ? "Casa — Jersey City" : originLabel}
           stops={mapStops}
           drawRoute
           restrooms={restrooms}
@@ -239,7 +271,7 @@ export default function HoyPage() {
           </button>
           {dayStops.length > 0 && (
             <a
-              href={googleMapsDirectionsUrl([HOME, ...dayStops.map((s) => ({ lat: s.lat, lng: s.lng }))])}
+              href={googleMapsDirectionsUrl([dayOrigin, ...dayStops.map((s) => ({ lat: s.lat, lng: s.lng }))])}
               target="_blank"
               rel="noreferrer"
               className="flex h-11 items-center rounded-full bg-cta px-4 text-xs font-bold uppercase text-cta-foreground cursor-pointer transition-transform duration-150 active:scale-[0.98]"
@@ -286,6 +318,14 @@ export default function HoyPage() {
         <NearbyRestroomsSheet
           onClose={() => setRestroomSheetOpen(false)}
           restrooms={restrooms}
+        />
+      )}
+
+      {originPickerOpen && selectedDay && (
+        <DayOriginPicker
+          day={selectedDay}
+          onClose={() => setOriginPickerOpen(false)}
+          onSelect={handleSetOrigin}
         />
       )}
     </div>

@@ -139,6 +139,7 @@ export default function DestinationCard({
           <Save size={18} aria-hidden />
         </button>
       </div>
+
     </li>
   );
 }

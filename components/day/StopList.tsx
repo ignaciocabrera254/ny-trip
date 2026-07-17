@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Check, ChevronDown, ChevronUp, TriangleAlert } from "lucide-react";
 import { haversineKm } from "@/lib/geo/haversine";
 import { walkingMinutes } from "@/lib/geo/walking";
@@ -16,7 +17,13 @@ type Props = {
   arrivalMinutes?: number[];
 };
 
-export default function StopList({ stops, onToggleVisited, onMove, arrivalMinutes }: Props) {
+export default function StopList({
+  stops,
+  onToggleVisited,
+  onMove,
+  arrivalMinutes,
+}: Props) {
+
   if (stops.length === 0) {
     return (
       <p className="px-4 py-6 text-center text-ink/60">
@@ -26,7 +33,8 @@ export default function StopList({ stops, onToggleVisited, onMove, arrivalMinute
   }
 
   return (
-    <ol className="flex flex-col px-4 pb-4">
+    <>
+      <ol className="flex flex-col px-4 pb-4">
       {stops.map((stop, index) => {
         const next = stops[index + 1];
         const segmentKm = next ? haversineKm(stop, next) : null;
@@ -46,7 +54,9 @@ export default function StopList({ stops, onToggleVisited, onMove, arrivalMinute
               </span>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold leading-tight">{stop.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate font-semibold leading-tight">{stop.name}</p>
+                </div>
                 {stop.notes && <p className="truncate text-sm text-ink/60">{stop.notes}</p>}
                 {stop.closes_at &&
                   arrivalMinutes?.[index] !== undefined &&
@@ -112,6 +122,7 @@ export default function StopList({ stops, onToggleVisited, onMove, arrivalMinute
           </li>
         );
       })}
-    </ol>
+      </ol>
+    </>
   );
 }

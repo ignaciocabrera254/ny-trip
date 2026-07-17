@@ -13,7 +13,10 @@ create table if not exists days (
   id uuid primary key default gen_random_uuid(),
   date date not null,
   title text not null,
-  sort_order int not null
+  sort_order int not null,
+  origin_lat numeric, -- optional per-day route start (e.g. Port Authority); NULL falls back to HOME
+  origin_lng numeric,
+  origin_label text
 );
 
 create table if not exists destinations (
@@ -44,8 +47,24 @@ create table if not exists restrooms (
   created_at timestamptz not null default now()
 );
 
+-- Curated points of interest inside a destination (where to eat, photo spots,
+-- bike rental, etc.) — metadata on the parent stop, not independent stops:
+-- never shown on the main map, never part of route optimization or distance.
+create table if not exists destination_tips (
+  id uuid primary key default gen_random_uuid(),
+  destination_id uuid not null references destinations(id) on delete cascade,
+  category text not null, -- 'comida' | 'foto' | 'bicicletas' | 'entrada' | 'baño' | 'tienda' | 'mirador' | 'otro'
+  name text not null,
+  notes text,
+  lat numeric,
+  lng numeric,
+  link text,
+  sort_order int not null default 0
+);
+
 create index if not exists destinations_day_id_idx on destinations(day_id);
 create index if not exists destinations_sort_order_idx on destinations(sort_order);
+create index if not exists destination_tips_destination_id_idx on destination_tips(destination_id);
 
 -- Single-user personal app on the free tier: RLS is enabled but left open.
 -- Add a real policy (e.g. scoped to an authenticated user) if this ever
@@ -53,11 +72,14 @@ create index if not exists destinations_sort_order_idx on destinations(sort_orde
 alter table days enable row level security;
 alter table destinations enable row level security;
 alter table restrooms enable row level security;
+alter table destination_tips enable row level security;
 
 drop policy if exists "open" on days;
 drop policy if exists "open" on destinations;
 drop policy if exists "open" on restrooms;
+drop policy if exists "open" on destination_tips;
 
 create policy "open" on days for all using (true) with check (true);
 create policy "open" on destinations for all using (true) with check (true);
 create policy "open" on restrooms for all using (true) with check (true);
+create policy "open" on destination_tips for all using (true) with check (true);

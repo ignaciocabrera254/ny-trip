@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { queuePatch } from "@/lib/offline/queue";
-import type { Day, Destination, Restroom } from "@/lib/types";
+import type { Day, Destination, DestinationTip, Restroom } from "@/lib/types";
 
 function fetchAll() {
   return Promise.all([
     supabase.from("days").select("*").order("sort_order"),
     supabase.from("destinations").select("*").order("sort_order"),
+    // Curated, user-authored, always small (unlike restrooms) — fine to load
+    // eagerly instead of deferring like the ~1000-row restrooms table.
+    supabase.from("destination_tips").select("*").order("sort_order"),
   ]);
 }
 
 export function useTripData() {
   const [days, setDays] = useState<Day[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [tips, setTips] = useState<DestinationTip[]>([]);
   const [restrooms, setRestrooms] = useState<Restroom[]>([]);
   const [restroomsLoaded, setRestroomsLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -22,10 +26,11 @@ export function useTripData() {
   // subscription from the effect's point of view, not a synchronous setState.
   useEffect(() => {
     let cancelled = false;
-    fetchAll().then(([daysRes, destRes]) => {
+    fetchAll().then(([daysRes, destRes, tipsRes]) => {
       if (cancelled) return;
       if (daysRes.data) setDays(daysRes.data);
       if (destRes.data) setDestinations(destRes.data);
+      if (tipsRes.data) setTips(tipsRes.data);
       setLoading(false);
     });
     return () => {
@@ -41,6 +46,17 @@ export function useTripData() {
     setRestroomsLoaded(true);
     const { data } = await supabase.from("restrooms").select("*");
     if (data) setRestrooms(data);
+  }
+
+  /** Optimistic day update (origin, title), reverted on a real server error. */
+  async function updateDay(id: string, patch: Partial<Day>) {
+    const previous = days;
+    setDays((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+    const { error } = await supabase.from("days").update(patch).eq("id", id);
+    if (error) {
+      setDays(previous);
+      setError(error.message);
+    }
   }
 
   // Optimistic local update, reverted if Supabase rejects the write so the UI
@@ -87,7 +103,7 @@ export function useTripData() {
       .single();
     if (error) {
       setError(error.message);
-      throw error;
+      throw new Error(error.message);
     }
     setDestinations((prev) =>
       [...prev, data].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -124,17 +140,55 @@ export function useTripData() {
     }
   }
 
+  async function addTip(input: Omit<DestinationTip, "id" | "sort_order"> & { sort_order?: number }) {
+    const { data, error } = await supabase
+      .from("destination_tips")
+      .insert({ ...input, sort_order: input.sort_order ?? 0 })
+      .select()
+      .single();
+    if (error) {
+      setError(error.message);
+      throw new Error(error.message);
+    }
+    setTips((prev) => [...prev, data]);
+  }
+
+  async function updateTip(id: string, patch: Partial<DestinationTip>) {
+    const previous = tips;
+    setTips((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    const { error } = await supabase.from("destination_tips").update(patch).eq("id", id);
+    if (error) {
+      setTips(previous);
+      setError(error.message);
+    }
+  }
+
+  async function deleteTip(id: string) {
+    const previous = tips;
+    setTips((prev) => prev.filter((t) => t.id !== id));
+    const { error } = await supabase.from("destination_tips").delete().eq("id", id);
+    if (error) {
+      setTips(previous);
+      setError(error.message);
+    }
+  }
+
   return {
     days,
     destinations,
+    tips,
     restrooms,
     loadRestrooms,
     loading,
     error,
     dismissError: () => setError(null),
+    updateDay,
     updateDestination,
     addDestination,
     deleteDestination,
     reorderDestinations,
+    addTip,
+    updateTip,
+    deleteTip,
   };
 }
