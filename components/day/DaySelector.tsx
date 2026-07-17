@@ -32,7 +32,7 @@ export default function DaySelector({ days, selectedDayId, onSelect }: Props) {
             onClick={() => onSelect(day.id)}
             className={`relative flex min-w-20 shrink-0 flex-col items-center rounded-md border-2 px-3 py-2 cursor-pointer transition-colors duration-150 ${
               selected
-                ? "border-ink bg-ink text-paper"
+                ? "border-amber-500 bg-amber-500 text-amber-900"
                 : isToday
                   ? "border-amber-500 bg-paper text-ink"
                   : "border-border bg-paper text-ink hover:border-ink/50"

@@ -48,6 +48,23 @@
   --color-cta-foreground: var(--amber-900);
   --color-danger: #d9553d;
 
+  /* ---------- Capa de propósito ----------
+     Alias semánticos 1:1 sobre los mismos valores de arriba — misma fuente de
+     verdad, dos nombres (el de la app y el de la spec de marca) por si algún
+     componente referencia var(--action) directo en vez de la utility Tailwind. */
+  --bg-page: var(--color-paper);
+  --bg-surface: var(--slate-50);
+  --text-primary: var(--slate-900);
+  --text-secondary: var(--slate-600);
+  --text-muted: var(--slate-400);
+  --border: var(--slate-200);
+  --action: var(--amber-500);
+  --action-hover: var(--amber-600);
+  --action-text: var(--amber-900);
+  --route-line: var(--teal);
+  --restroom-pin: var(--teal);
+  --sunset-marker: var(--amber-500);
+
   /* Colores por categoría (identidad tipo MTA, no forman parte de la paleta Sundy). */
   --color-line-mirador: #0039a6;
   --color-line-monumento: #ee352e;
@@ -129,12 +146,6 @@ button:not(:disabled):not(.backdrop-button) {
 }
 button:not(:disabled):not(.backdrop-button):active {
   transform: scale(0.98);
-}
-
-/* Leaflet ships its own CSS that assumes no reset; keep controls visible on our high-contrast theme. */
-.leaflet-container {
-  font-family: var(--font-sans);
-  background: var(--color-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

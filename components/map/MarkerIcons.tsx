@@ -34,7 +34,7 @@ export function BulletIcon({ number, color, visited }: { number: number; color: 
 
 /** Gold star marker for the day's fixed sunset spot. */
 export function SunsetIcon({ visited }: { visited?: boolean }) {
-  const bg = visited ? VISITED_GRAY : "#E89B31";
+  const bg = visited ? VISITED_GRAY : "var(--sunset-marker)";
   return (
     <div
       style={{
@@ -68,9 +68,10 @@ export function HomeIcon() {
   );
 }
 
-/** Small "WC" bullet used for restroom pins. */
-export function RestroomIcon({ source }: { source: "official" | "custom" }) {
-  const bg = source === "official" ? "#0039A6" : "#21262C";
+/** Small "WC" bullet used for restroom pins. Teal on purpose — keeps it out of
+ *  the amber the sunset/route markers use, so the two don't compete. */
+export function RestroomIcon() {
+  const bg = "var(--restroom-pin)";
   return (
     <div
       style={{

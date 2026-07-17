@@ -66,7 +66,9 @@ function MapPolyline({
     if (!polylineRef.current) {
       polylineRef.current = new google.maps.Polyline({
         path,
-        strokeColor: "#21262C",
+        // Google Maps Polyline needs a literal color — can't read CSS custom
+        // properties — so this is --route-line's computed value (teal).
+        strokeColor: "#2A9D8F",
         strokeOpacity: 0.7,
         strokeWeight: 2,
         icons: [
@@ -161,7 +163,7 @@ export default function TripMap({
           {showRestrooms &&
             restrooms.map((r) => (
               <AdvancedMarker key={r.id} position={{ lat: r.lat, lng: r.lng }} title={r.name}>
-                <RestroomIcon source={r.source} />
+                <RestroomIcon />
               </AdvancedMarker>
             ))}
 

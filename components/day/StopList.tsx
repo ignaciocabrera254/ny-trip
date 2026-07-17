@@ -81,7 +81,7 @@ export default function StopList({ stops, onToggleVisited, onMove, arrivalMinute
                   aria-pressed={stop.visited}
                   aria-label={stop.visited ? `Marcar ${stop.name} como pendiente` : `Marcar ${stop.name} como visitado`}
                   className={`flex h-11 w-11 items-center justify-center rounded-full border-2 cursor-pointer transition-colors duration-150 ${
-                    stop.visited ? "border-ink bg-ink text-paper" : "border-border text-transparent"
+                    stop.visited ? "border-success bg-success text-paper" : "border-border text-transparent"
                   }`}
                 >
                   <Check size={20} aria-hidden />
