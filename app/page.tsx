@@ -187,7 +187,7 @@ export default function HoyPage() {
         </div>
       )}
 
-      <div className="relative h-[38vh] w-full shrink-0 border-y border-border">
+      <div className="relative h-[30vh] w-full shrink-0 border-y border-border">
         <DynamicTripMap
           center={mapCenter}
           origin={HOME}
@@ -236,7 +236,7 @@ export default function HoyPage() {
       </div>
 
       {dayStops.length > 0 && (
-        <div className="flex items-center gap-3 px-4 pb-2 text-sm text-ink/70">
+        <div className="flex items-center gap-3 px-4 py-2 text-sm text-ink/70">
           <span className="shrink-0 font-semibold">
             {visitedCount} de {dayStops.length} visitados
           </span>

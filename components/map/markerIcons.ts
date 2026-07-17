@@ -22,10 +22,9 @@ export function bulletIcon(number: number, color: string, visited?: boolean): L.
 /** Gold star marker for the day's fixed sunset spot. */
 export function sunsetIcon(visited?: boolean): L.DivIcon {
   const bg = visited ? VISITED_GRAY : "#E89B31";
-  const sunSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
   return L.divIcon({
     className: "",
-    html: `<div style="${BASE_STYLE}width:36px;height:36px;border-radius:9999px;background:${bg};color:#21262C;">${sunSvg}</div>`,
+    html: `<div style="${BASE_STYLE}width:36px;height:36px;border-radius:9999px;background:${bg};color:#21262C;font-size:18px;">&#9733;</div>`,
     iconSize: [36, 36],
     iconAnchor: [18, 18],
     popupAnchor: [0, -18],

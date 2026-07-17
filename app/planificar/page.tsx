@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { Plus, TriangleAlert } from "lucide-react";
 import DestinationCard from "@/components/planning/DestinationCard";
 import DestinationForm from "@/components/planning/DestinationForm";
@@ -85,12 +86,13 @@ export default function PlanificarPage() {
   return (
     <div className="flex flex-col">
       <header className="flex items-center justify-between border-b-2 border-ink px-4 py-3">
-        <h1 className="text-lg font-black uppercase tracking-tight">Planificar</h1>
+        <Image src="/brand/logo.svg" alt="Sundy" width={120} height={39} className="h-7 w-auto" priority />
       </header>
 
       {error && <ErrorBanner message={error} onDismiss={dismissError} />}
 
       <div className="flex flex-col gap-3 p-4">
+        <h1 className="text-xl font-black uppercase tracking-tight text-ink pb-2">Planifica tu ruta</h1>
         {days.map((day) => {
           const stops = byDay.get(day.id) ?? [];
           const missingSunset = stops.length > 0 && !stops.some((s) => s.is_sunset_spot);
@@ -98,7 +100,10 @@ export default function PlanificarPage() {
             <details key={day.id} className="rounded-md border border-border">
               <summary className="flex cursor-pointer items-center justify-between px-3 py-3 font-bold">
                 <span>
-                  {day.title} <span className="font-normal text-ink/50">— {day.date}</span>
+                  {day.title} <span className="font-normal text-ink/50">— {
+                    new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric' })
+                      .format(new Date(day.date + 'T12:00:00'))
+                  }</span>
                 </span>
                 <span className="flex items-center gap-2 text-sm font-normal text-ink/50">
                   {missingSunset && (

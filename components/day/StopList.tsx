@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronUp, TriangleAlert, Sun } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, TriangleAlert } from "lucide-react";
 import { haversineKm } from "@/lib/geo/haversine";
 import { walkingMinutes } from "@/lib/geo/walking";
 import { formatMinutes, parseHHMM } from "@/lib/geo/scheduleEstimate";
@@ -42,7 +42,7 @@ export default function StopList({ stops, onToggleVisited, onMove, arrivalMinute
                 style={{ backgroundColor: CATEGORY_COLOR[stop.is_sunset_spot ? "sunset" : stop.category] }}
                 aria-hidden
               >
-                {stop.is_sunset_spot ? <Sun size={16} /> : index + 1}
+                {stop.is_sunset_spot ? "★" : index + 1}
               </span>
 
               <div className="min-w-0 flex-1">
