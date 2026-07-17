@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { LoaderCircle, MapPin, Search, X } from "lucide-react";
 import DynamicTripMap from "@/components/map/DynamicTripMap";
-import { searchPlace, type NominatimResult } from "@/lib/geo/nominatim";
+import { searchPlace, type SearchResult } from "@/lib/geo/geocoding";
 import { CATEGORY_LABEL, HOME, type Day, type Destination, type DestinationCategory, type LatLng } from "@/lib/types";
 
 type Props = {
@@ -28,7 +28,7 @@ export default function DestinationForm({
   const [mode, setMode] = useState<"search" | "map">("search");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [searched, setSearched] = useState(false);
   const [picked, setPicked] = useState<LatLng | null>(null);
   const [name, setName] = useState("");
@@ -80,7 +80,7 @@ export default function DestinationForm({
     }
   }
 
-  function pickResult(r: NominatimResult) {
+  function pickResult(r: SearchResult) {
     setPicked({ lat: r.lat, lng: r.lng });
     setName(r.display_name.split(",")[0]);
     setResults([]);
