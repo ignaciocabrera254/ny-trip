@@ -31,6 +31,9 @@ export type Destination = {
   /** Optional manual "HH:MM" hours, used only for a rough same-day arrival estimate. */
   opens_at: string | null;
   closes_at: string | null;
+  /** Optional rough budget estimate for this stop. */
+  estimated_cost: number | null;
+  currency: string;
 };
 
 export type Restroom = {

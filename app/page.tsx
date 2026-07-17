@@ -56,6 +56,11 @@ export default function HoyPage() {
 
   const hasSunsetSpot = dayStops.some((s) => s.is_sunset_spot);
   const totalKm = totalRouteKm(HOME, dayStops);
+  const stopsWithCost = dayStops.filter((s) => s.estimated_cost != null);
+  const dayCostTotal =
+    stopsWithCost.length > 0
+      ? stopsWithCost.reduce((sum, s) => sum + (s.estimated_cost ?? 0), 0)
+      : null;
 
   const selectedDay = days.find((d) => d.id === selectedDayId);
 
@@ -175,14 +180,14 @@ export default function HoyPage() {
       {error && <ErrorBanner message={error} onDismiss={dismissError} />}
 
       {dayStops.length > 0 && !hasSunsetSpot && (
-        <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border-2 border-danger bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
+        <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border-2 border-warning bg-warning/10 px-3 py-2 text-sm font-semibold text-warning">
           <TriangleAlert size={18} aria-hidden />
           Falta sunset spot para este día
         </div>
       )}
 
       {sunsetInfo && (
-        <div className="mx-4 mb-2 flex flex-col gap-1 rounded-md border-2 border-line-sunset bg-line-sunset/10 px-3 py-2 text-sm">
+        <div className="mx-4 mb-2 flex flex-col gap-1 rounded-md border-2 border-amber-500 bg-amber-50 px-3 py-2 text-sm">
           <span className="font-semibold">🌇 Atardecer: {formatNyTime(sunsetInfo.sunsetAt)}</span>
           <span className="text-ink/70">
             Sal de {sunsetInfo.fromLabel} antes de las {formatNyTime(sunsetInfo.deadline)} para llegar al
@@ -219,12 +224,15 @@ export default function HoyPage() {
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
         <p className="text-sm text-ink/70">
           {totalKm.toFixed(1)} km <span className="text-ink/50">aprox. en línea recta</span>
+          {dayCostTotal !== null && (
+            <span className="text-slate-600"> · 💵 ~${Math.round(dayCostTotal)} estimado</span>
+          )}
         </p>
         <div className="flex shrink-0 gap-2">
           <button
             onClick={handleOptimize}
             disabled={dayStops.length < 2}
-            className="flex h-11 items-center gap-1.5 rounded-full border-2 border-ink px-3 text-xs font-bold uppercase disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+            className="flex h-11 items-center gap-1.5 rounded-full border-2 border-amber-500 px-3 text-xs font-bold uppercase text-amber-500 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
           >
             <Route size={16} aria-hidden />
             Optimizar

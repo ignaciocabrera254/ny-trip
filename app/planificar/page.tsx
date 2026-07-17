@@ -75,7 +75,19 @@ export default function PlanificarPage() {
     await updateDestination(id, { is_sunset_spot: isSunsetSpot });
   }
 
+  async function handleUpdateCost(id: string, cost: number | null) {
+    await updateDestination(id, { estimated_cost: cost });
+  }
+
   const sunsetPickerDay = sunsetPickerDayId ? days.find((d) => d.id === sunsetPickerDayId) ?? null : null;
+
+  function dayCostTotal(stops: typeof destinations): number | null {
+    const withCost = stops.filter((s) => s.estimated_cost != null);
+    if (withCost.length === 0) return null;
+    return withCost.reduce((sum, s) => sum + (s.estimated_cost ?? 0), 0);
+  }
+
+  const tripCostTotal = dayCostTotal(destinations);
 
   if (loading) {
     return (
@@ -96,6 +108,7 @@ export default function PlanificarPage() {
         {days.map((day) => {
           const stops = byDay.get(day.id) ?? [];
           const missingSunset = stops.length > 0 && !stops.some((s) => s.is_sunset_spot);
+          const dayCost = dayCostTotal(stops);
           return (
             <details key={day.id} className="rounded-md border border-border">
               <summary className="flex cursor-pointer items-center justify-between px-3 py-3 font-bold">
@@ -114,12 +127,15 @@ export default function PlanificarPage() {
                         setSunsetPickerDayId(day.id);
                       }}
                       aria-label={`Falta sunset spot para ${day.title} — elegir uno`}
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-danger cursor-pointer"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-warning cursor-pointer"
                     >
                       <TriangleAlert size={16} aria-hidden />
                     </button>
                   )}
                   {stops.length}
+                  {dayCost !== null && (
+                    <span className="text-slate-600">· ~${Math.round(dayCost)}</span>
+                  )}
                 </span>
               </summary>
               <ul className="flex flex-col gap-2 border-t border-border p-3">
@@ -131,6 +147,7 @@ export default function PlanificarPage() {
                     days={days}
                     onMoveToDay={handleMoveToDay}
                     onToggleSunset={handleToggleSunset}
+                    onUpdateCost={handleUpdateCost}
                     onDelete={deleteDestination}
                   />
                 ))}
@@ -153,12 +170,19 @@ export default function PlanificarPage() {
                 days={days}
                 onMoveToDay={handleMoveToDay}
                 onToggleSunset={handleToggleSunset}
+                onUpdateCost={handleUpdateCost}
                 onDelete={deleteDestination}
                 suggestedDay={suggestDayFor(d)}
               />
             ))}
           </ul>
         </details>
+
+        {tripCostTotal !== null && (
+          <p className="px-1 text-sm font-semibold text-slate-600">
+            Total estimado del viaje: ~${Math.round(tripCostTotal)}
+          </p>
+        )}
       </div>
 
       <button

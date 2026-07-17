@@ -38,6 +38,7 @@ export default function DestinationForm({
   const [isSunsetSpot, setIsSunsetSpot] = useState(false);
   const [opensAt, setOpensAt] = useState("");
   const [closesAt, setClosesAt] = useState("");
+  const [estimatedCost, setEstimatedCost] = useState("");
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [loadingHours, setLoadingHours] = useState(false);
   const [hoursNotFound, setHoursNotFound] = useState(false);
@@ -69,6 +70,7 @@ export default function DestinationForm({
     setIsSunsetSpot(false);
     setOpensAt("");
     setClosesAt("");
+    setEstimatedCost("");
     setPlaceId(null);
     setHoursNotFound(false);
     setMode("search");
@@ -137,6 +139,8 @@ export default function DestinationForm({
         day_id: dayId === "backlog" ? null : dayId,
         opens_at: opensAt || null,
         closes_at: closesAt || null,
+        estimated_cost: estimatedCost ? Number(estimatedCost) : null,
+        currency: "USD",
       });
       reset();
       onClose();
@@ -332,6 +336,28 @@ export default function DestinationForm({
                 className="h-5 w-5"
               />
               Es el sunset spot del día
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm font-semibold">
+              Costo estimado (opcional)
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-ink/50">
+                  $
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={estimatedCost}
+                  onChange={(e) => setEstimatedCost(e.target.value)}
+                  placeholder="0"
+                  className="h-11 w-full rounded-md border border-border pl-7 pr-14 text-base font-normal"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-ink/50">
+                  USD
+                </span>
+              </div>
             </label>
 
             <div className="flex gap-3">

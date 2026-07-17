@@ -29,6 +29,8 @@ create table if not exists destinations (
   sort_order int not null default 0,
   opens_at time, -- optional manual opening hours, used only for a rough same-day arrival estimate
   closes_at time,
+  estimated_cost numeric, -- optional, per-destination rough budget estimate
+  currency text not null default 'USD',
   created_at timestamptz not null default now()
 );
 

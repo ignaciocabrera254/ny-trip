@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Star, Trash2 } from "lucide-react";
+import { Save, Star, Trash2 } from "lucide-react";
 import CategoryBullet from "@/components/ui/CategoryBullet";
 import type { Day, Destination } from "@/lib/types";
 
@@ -8,6 +8,7 @@ type Props = {
   days: Day[];
   onMoveToDay: (id: string, dayId: string | null) => void;
   onToggleSunset: (id: string, isSunsetSpot: boolean) => void;
+  onUpdateCost: (id: string, cost: number | null) => void;
   onDelete: (id: string) => void;
   /** Geographically closest day, offered only for unassigned (backlog) destinations. */
   suggestedDay?: { day: Day; km: number } | null;
@@ -18,10 +19,16 @@ export default function DestinationCard({
   days,
   onMoveToDay,
   onToggleSunset,
+  onUpdateCost,
   onDelete,
   suggestedDay,
 }: Props) {
   const [showSuggestion, setShowSuggestion] = useState(false);
+  const [costDraft, setCostDraft] = useState(destination.estimated_cost?.toString() ?? "");
+
+  function handleSaveCost() {
+    onUpdateCost(destination.id, costDraft ? Number(costDraft) : null);
+  }
 
   return (
     <li className="flex flex-col gap-2 rounded-md border border-border p-3">
@@ -103,6 +110,33 @@ export default function DestinationCard({
           }`}
         >
           <Star size={18} aria-hidden fill={destination.is_sunset_spot ? "currentColor" : "none"} />
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink/50">
+            $
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={costDraft}
+            onChange={(e) => setCostDraft(e.target.value)}
+            placeholder="Costo estimado"
+            aria-label={`Costo estimado de ${destination.name}`}
+            className="h-11 w-full rounded-md border border-border pl-6 pr-1 text-sm"
+          />
+        </div>
+
+        <button
+          onClick={handleSaveCost}
+          aria-label={`Guardar costo estimado de ${destination.name}`}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-amber-500 text-amber-500 cursor-pointer"
+        >
+          <Save size={18} aria-hidden />
         </button>
       </div>
     </li>
