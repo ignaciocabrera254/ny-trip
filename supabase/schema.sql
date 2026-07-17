@@ -27,6 +27,8 @@ create table if not exists destinations (
   is_sunset_spot boolean not null default false,
   visited boolean not null default false,
   sort_order int not null default 0,
+  opens_at time, -- optional manual opening hours, used only for a rough same-day arrival estimate
+  closes_at time,
   created_at timestamptz not null default now()
 );
 

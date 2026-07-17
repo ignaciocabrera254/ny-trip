@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { queuePatch } from "@/lib/offline/queue";
 import type { Day, Destination, Restroom } from "@/lib/types";
 
 function fetchAll() {
@@ -34,14 +35,32 @@ export function useTripData() {
   }, []);
 
   // Optimistic local update, reverted if Supabase rejects the write so the UI
-  // never claims a change stuck that didn't actually persist.
+  // never claims a change stuck that didn't actually persist. Offline writes
+  // (no network, or a request that fails after connectivity drops) are queued
+  // locally instead of reverted, and replayed once the connection is back.
   async function updateDestination(id: string, patch: Partial<Destination>) {
     const previous = destinations;
-    setDestinations((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
-    const { error } = await supabase.from("destinations").update(patch).eq("id", id);
-    if (error) {
+    setDestinations((prev) =>
+      prev
+        .map((d) => (d.id === id ? { ...d, ...patch } : d))
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    );
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      queuePatch(id, patch);
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("destinations").update(patch).eq("id", id);
+      if (error) throw error;
+    } catch (err) {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        queuePatch(id, patch);
+        return;
+      }
       setDestinations(previous);
-      setError(error.message);
+      setError(err instanceof Error ? err.message : "No se pudo guardar el cambio.");
     }
   }
 
@@ -57,7 +76,9 @@ export function useTripData() {
       setError(error.message);
       throw error;
     }
-    setDestinations((prev) => [...prev, data]);
+    setDestinations((prev) =>
+      [...prev, data].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    );
   }
 
   async function deleteDestination(id: string) {
@@ -75,7 +96,10 @@ export function useTripData() {
     const previous = destinations;
     setDestinations((prev) => {
       const order = new Map(orderedIds.map((id, i) => [id, i]));
-      return prev.map((d) => (order.has(d.id) ? { ...d, sort_order: order.get(d.id)! } : d));
+      const updated = prev.map((d) =>
+        order.has(d.id) ? { ...d, sort_order: order.get(d.id)! } : d
+      );
+      return updated.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
     });
     const results = await Promise.all(
       orderedIds.map((id, i) => supabase.from("destinations").update({ sort_order: i }).eq("id", id))

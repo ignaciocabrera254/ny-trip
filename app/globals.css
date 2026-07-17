@@ -2,20 +2,60 @@
 @import "leaflet/dist/leaflet.css";
 
 :root {
-  --color-paper: #ffffff;
-  --color-ink: #0a0a0a;
-  --color-muted: #f4f4f4;
-  --color-border: #d4d4d4;
-  --color-cta: #0a0a0a;
-  --color-cta-foreground: #ffffff;
-  --color-danger: #ee352e;
+  /* ---------- Sundy — núcleo de marca ---------- */
+  --sundy-amber: #e89b31;
+  --sundy-slate: #21262c;
+  --sundy-cream: #f1e6d3;
 
+  /* ---------- Ámbar · escala primaria ---------- */
+  --amber-50: #fdf6ec;
+  --amber-100: #fbeac9;
+  --amber-200: #f6d492;
+  --amber-300: #f0bc5b;
+  --amber-400: #ecaa43;
+  --amber-500: #e89b31;
+  --amber-600: #c97e1e;
+  --amber-700: #9f6218;
+  --amber-800: #764817;
+  --amber-900: #4e3011;
+
+  /* ---------- Slate · escala neutral ---------- */
+  --slate-50: #f5f7f8;
+  --slate-100: #eaedf0;
+  --slate-200: #d8dce1;
+  --slate-300: #b9bfc7;
+  --slate-400: #939ba5;
+  --slate-500: #6e7883;
+  --slate-600: #515b67;
+  --slate-700: #3b434e;
+  --slate-800: #2b313a;
+  --slate-900: #21262c;
+
+  /* ---------- Acentos de atardecer ---------- */
+  --coral: #e56b4a;
+  --dusk-rose: #c2506e;
+  --teal: #2a9d8f;
+
+  /* ---------- Semánticos ---------- */
+  --success: #3fa76b;
+  --warning: #e8a331;
+
+  /* ---------- Alias de la app (paper/ink/cta ya se usan en todos los componentes) ---------- */
+  --color-paper: #ffffff;
+  --color-ink: var(--slate-900);
+  --color-muted: var(--slate-50);
+  --color-border: var(--slate-200);
+  --color-cta: var(--amber-500);
+  --color-cta-foreground: var(--amber-900);
+  --color-danger: #d9553d;
+
+  /* Colores por categoría (identidad tipo MTA, no forman parte de la paleta Sundy). */
   --color-line-mirador: #0039a6;
   --color-line-monumento: #ee352e;
   --color-line-parque: #00933c;
   --color-line-comida: #ff6319;
   --color-line-templo: #b933ad;
-  --color-line-sunset: #fccc0a;
+  --color-line-sunset: var(--amber-500);
   --color-line-otro: #a7a9ac;
 }
 
@@ -35,6 +75,40 @@
   --color-line-templo: var(--color-line-templo);
   --color-line-sunset: var(--color-line-sunset);
   --color-line-otro: var(--color-line-otro);
+
+  /* Sobreescribe las escalas amber/slate por defecto de Tailwind con las de Sundy,
+     y expone el resto de la paleta como utilities (bg-teal, text-success, bg-sundy-cream…). */
+  --color-amber-50: var(--amber-50);
+  --color-amber-100: var(--amber-100);
+  --color-amber-200: var(--amber-200);
+  --color-amber-300: var(--amber-300);
+  --color-amber-400: var(--amber-400);
+  --color-amber-500: var(--amber-500);
+  --color-amber-600: var(--amber-600);
+  --color-amber-700: var(--amber-700);
+  --color-amber-800: var(--amber-800);
+  --color-amber-900: var(--amber-900);
+
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-800);
+  --color-slate-900: var(--slate-900);
+
+  --color-sundy-amber: var(--sundy-amber);
+  --color-sundy-slate: var(--sundy-slate);
+  --color-sundy-cream: var(--sundy-cream);
+
+  --color-coral: var(--coral);
+  --color-dusk: var(--dusk-rose);
+  --color-teal: var(--teal);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
 }

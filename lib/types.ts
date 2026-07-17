@@ -28,6 +28,9 @@ export type Destination = {
   is_sunset_spot: boolean;
   visited: boolean;
   sort_order: number;
+  /** Optional manual "HH:MM" hours, used only for a rough same-day arrival estimate. */
+  opens_at: string | null;
+  closes_at: string | null;
 };
 
 export type Restroom = {
@@ -57,8 +60,8 @@ export const CATEGORY_COLOR: Record<DestinationCategory, string> = {
   parque: "#00933C",
   comida: "#FF6319",
   templo: "#B933AD",
-  sunset: "#FCCC0A",
-  otro: "#A7A9AC",
+  sunset: "#E89B31",
+  otro: "#007AFF",
 };
 
 export const HOME: LatLng = { lat: 40.7484, lng: -74.0465 };

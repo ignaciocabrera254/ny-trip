@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Route, ToiletIcon, TriangleAlert } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { Route, ToiletIcon, TriangleAlert, Home } from "lucide-react";
 import DynamicTripMap from "@/components/map/DynamicTripMap";
 import type { MapStop } from "@/components/map/TripMap";
 import DaySelector from "@/components/day/DaySelector";
@@ -10,7 +11,11 @@ import NearbyRestroomsSheet from "@/components/restrooms/NearbyRestroomsSheet";
 import ErrorBanner from "@/components/ui/ErrorBanner";
 import { useTripData } from "@/lib/useTripData";
 import { optimizeDay, totalRouteKm } from "@/lib/geo/routeOptimize";
-import { googleMapsDirectionsUrl } from "@/lib/maps/googleMapsLink";
+import { haversineKm } from "@/lib/geo/haversine";
+import { departureDeadline, formatNyTime, sunsetTimeFor } from "@/lib/geo/sunset";
+import { estimateArrivals, parseHHMM } from "@/lib/geo/scheduleEstimate";
+import { googleMapsDirectionsUrl, googleMapsTransitUrl } from "@/lib/maps/googleMapsLink";
+import { fetchDailyWeather, type DailyWeather } from "@/lib/weather/openMeteo";
 import { CATEGORY_COLOR, HOME } from "@/lib/types";
 
 function pickDefaultDayId(days: { id: string; date: string }[]): string | null {
@@ -37,6 +42,8 @@ export default function HoyPage() {
   const [manualDayId, setManualDayId] = useState<string | null>(null);
   const [showRestroomLayer, setShowRestroomLayer] = useState(false);
   const [restroomSheetOpen, setRestroomSheetOpen] = useState(false);
+  const [dayStartTime, setDayStartTime] = useState("10:00");
+  const [weather, setWeather] = useState<DailyWeather | null>(null);
 
   const defaultDayId = useMemo(() => pickDefaultDayId(days), [days]);
   const selectedDayId = manualDayId ?? defaultDayId;
@@ -49,14 +56,48 @@ export default function HoyPage() {
   const hasSunsetSpot = dayStops.some((s) => s.is_sunset_spot);
   const totalKm = totalRouteKm(HOME, dayStops);
 
+  const selectedDay = days.find((d) => d.id === selectedDayId);
+
+  const sunsetInfo = useMemo(() => {
+    if (!selectedDay) return null;
+    const sunsetIndex = dayStops.findIndex((s) => s.is_sunset_spot);
+    if (sunsetIndex === -1) return null;
+    const spot = dayStops[sunsetIndex];
+    const sunsetAt = sunsetTimeFor(selectedDay.date, spot);
+    const from = sunsetIndex > 0 ? dayStops[sunsetIndex - 1] : HOME;
+    const fromLabel = sunsetIndex > 0 ? dayStops[sunsetIndex - 1].name : "casa";
+    const deadline = departureDeadline(sunsetAt, haversineKm(from, spot));
+    return { sunsetAt, deadline, fromLabel };
+  }, [selectedDay, dayStops]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setWeather(null);
+    if (!selectedDay) return;
+    fetchDailyWeather(selectedDay.date).then((w) => {
+      if (!cancelled) setWeather(w);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDay]);
+
+  const arrivalMinutes = useMemo(
+    () => estimateArrivals(HOME, dayStops, parseHHMM(dayStartTime)),
+    [dayStops, dayStartTime]
+  );
+
   const mapStops: MapStop[] = dayStops.map((s) => ({
     id: s.id,
     position: { lat: s.lat, lng: s.lng },
     label: s.name,
     color: CATEGORY_COLOR[s.category],
     isSunsetSpot: s.is_sunset_spot,
+    visited: s.visited,
     popup: s.name,
   }));
+
+  const visitedCount = dayStops.filter((s) => s.visited).length;
 
   async function handleOptimize() {
     if (!selectedDayId) return;
@@ -75,6 +116,21 @@ export default function HoyPage() {
 
   const mapCenter = dayStops[0] ? { lat: dayStops[0].lat, lng: dayStops[0].lng } : HOME;
 
+  function handleGoHome() {
+    const open = (origin: { lat: number; lng: number } | null) =>
+      window.open(googleMapsTransitUrl(origin, HOME), "_blank", "noopener,noreferrer");
+
+    if (!("geolocation" in navigator)) {
+      open(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => open({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => open(null),
+      { timeout: 8000 }
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center text-ink/60">
@@ -86,7 +142,28 @@ export default function HoyPage() {
   return (
     <div className="flex flex-col">
       <header className="flex items-center justify-between border-b-2 border-ink px-4 py-3">
-        <h1 className="text-lg font-black uppercase tracking-tight">NY Trip Planner</h1>
+        <Image src="/brand/logo.svg" alt="Sundy" width={120} height={39} className="h-7 w-auto" priority />
+        <div className="flex items-center gap-2">
+          {weather && (
+            <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-semibold">
+              ☀️ {Math.round(weather.maxTempC)}°C · 🌧️ {Math.round(weather.rainChancePct)}%
+            </span>
+          )}
+          <button
+            onClick={() => setRestroomSheetOpen(true)}
+            aria-label="Baños cerca"
+            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-ink bg-paper text-ink cursor-pointer hover:bg-muted transition-all active:scale-95"
+          >
+            <ToiletIcon size={16} aria-hidden />
+          </button>
+          <button
+            onClick={handleGoHome}
+            aria-label="A casa"
+            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-ink bg-paper text-ink cursor-pointer hover:bg-muted transition-all active:scale-95"
+          >
+            <Home size={16} aria-hidden />
+          </button>
+        </div>
       </header>
 
       <DaySelector days={days} selectedDayId={selectedDayId} onSelect={setManualDayId} />
@@ -97,6 +174,16 @@ export default function HoyPage() {
         <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border-2 border-danger bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
           <TriangleAlert size={18} aria-hidden />
           Falta sunset spot para este día
+        </div>
+      )}
+
+      {sunsetInfo && (
+        <div className="mx-4 mb-2 flex flex-col gap-1 rounded-md border-2 border-line-sunset bg-line-sunset/10 px-3 py-2 text-sm">
+          <span className="font-semibold">🌇 Atardecer: {formatNyTime(sunsetInfo.sunsetAt)}</span>
+          <span className="text-ink/70">
+            Sal de {sunsetInfo.fromLabel} antes de las {formatNyTime(sunsetInfo.deadline)} para llegar al
+            atardecer
+          </span>
         </div>
       )}
 
@@ -148,19 +235,37 @@ export default function HoyPage() {
         </div>
       </div>
 
+      {dayStops.length > 0 && (
+        <div className="flex items-center gap-3 px-4 pb-2 text-sm text-ink/70">
+          <span className="shrink-0 font-semibold">
+            {visitedCount} de {dayStops.length} visitados
+          </span>
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-cta transition-[width] duration-300"
+              style={{ width: `${(visitedCount / dayStops.length) * 100}%` }}
+            />
+          </div>
+          <label className="flex shrink-0 items-center gap-1.5 text-xs text-ink/50">
+            Inicio
+            <input
+              type="time"
+              value={dayStartTime}
+              onChange={(e) => setDayStartTime(e.target.value)}
+              className="rounded border border-border px-1 py-0.5 text-xs text-ink"
+            />
+          </label>
+        </div>
+      )}
+
       <StopList
         stops={dayStops}
         onToggleVisited={(id, visited) => updateDestination(id, { visited })}
         onMove={handleMove}
+        arrivalMinutes={arrivalMinutes}
       />
 
-      <button
-        onClick={() => setRestroomSheetOpen(true)}
-        className="fixed bottom-20 right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-cta px-5 font-bold text-cta-foreground shadow-lg cursor-pointer"
-      >
-        <ToiletIcon size={20} aria-hidden />
-        Baños cerca
-      </button>
+
 
       {restroomSheetOpen && (
         <NearbyRestroomsSheet

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import BottomNav from "@/components/nav/BottomNav";
+import PwaRuntime from "@/components/pwa/PwaRuntime";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,7 +21,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="h-full antialiased">
-      <body className="min-h-dvh flex flex-col bg-paper text-ink font-sans">
+      <body className="min-h-dvh flex flex-col bg-paper text-ink font-sans" suppressHydrationWarning>
+        <PwaRuntime />
         <div className="flex-1 pb-16">{children}</div>
         <BottomNav />
       </body>

@@ -17,6 +17,7 @@ export type MapStop = {
   label: string;
   color: string;
   isSunsetSpot: boolean;
+  visited?: boolean;
   popup?: string;
 };
 
@@ -113,7 +114,9 @@ export default function TripMap({
     }
 
     stops.forEach((stop, index) => {
-      const icon = stop.isSunsetSpot ? sunsetIcon() : bulletIcon(index + 1, stop.color);
+      const icon = stop.isSunsetSpot
+        ? sunsetIcon(stop.visited)
+        : bulletIcon(index + 1, stop.color, stop.visited);
       const marker = L.marker([stop.position.lat, stop.position.lng], { icon }).addTo(
         layers.stops
       );
@@ -127,7 +130,7 @@ export default function TripMap({
         ...stops.map((s) => [s.position.lat, s.position.lng] as L.LatLngExpression),
       ];
       L.polyline(path, {
-        color: "#0a0a0a",
+        color: "#21262C",
         weight: 2,
         dashArray: "6 6",
         opacity: 0.7,

@@ -4,8 +4,12 @@ import { useMemo, useState } from "react";
 import { Plus, TriangleAlert } from "lucide-react";
 import DestinationCard from "@/components/planning/DestinationCard";
 import DestinationForm from "@/components/planning/DestinationForm";
+import SunsetSpotPicker from "@/components/planning/SunsetSpotPicker";
 import ErrorBanner from "@/components/ui/ErrorBanner";
+import { centroid } from "@/lib/geo/centroid";
+import { haversineKm } from "@/lib/geo/haversine";
 import { useTripData } from "@/lib/useTripData";
+import type { Day } from "@/lib/types";
 
 export default function PlanificarPage() {
   const {
@@ -20,6 +24,9 @@ export default function PlanificarPage() {
   } = useTripData();
 
   const [formOpen, setFormOpen] = useState(false);
+  const [formDefaultDayId, setFormDefaultDayId] = useState<string | null>(null);
+  const [formForceSunset, setFormForceSunset] = useState(false);
+  const [sunsetPickerDayId, setSunsetPickerDayId] = useState<string | null>(null);
 
   const backlog = useMemo(() => destinations.filter((d) => d.day_id === null), [destinations]);
   const byDay = useMemo(() => {
@@ -31,6 +38,34 @@ export default function PlanificarPage() {
     return map;
   }, [days, destinations]);
 
+  // Centroid of each day's already-assigned stops, used to suggest the
+  // geographically closest day for a backlog destination.
+  const dayCentroids = useMemo(() => {
+    const map = new Map<string, { lat: number; lng: number }>();
+    for (const day of days) {
+      const c = centroid((byDay.get(day.id) ?? []).map((s) => ({ lat: s.lat, lng: s.lng })));
+      if (c) map.set(day.id, c);
+    }
+    return map;
+  }, [days, byDay]);
+
+  function suggestDayFor(point: { lat: number; lng: number }): { day: Day; km: number } | null {
+    let best: { day: Day; km: number } | null = null;
+    for (const day of days) {
+      const c = dayCentroids.get(day.id);
+      if (!c) continue;
+      const km = haversineKm(point, c);
+      if (!best || km < best.km) best = { day, km };
+    }
+    return best;
+  }
+
+  function openAddForm(dayId: string | null = null, forceSunset = false) {
+    setFormDefaultDayId(dayId);
+    setFormForceSunset(forceSunset);
+    setFormOpen(true);
+  }
+
   async function handleMoveToDay(id: string, dayId: string | null) {
     await updateDestination(id, { day_id: dayId });
   }
@@ -38,6 +73,8 @@ export default function PlanificarPage() {
   async function handleToggleSunset(id: string, isSunsetSpot: boolean) {
     await updateDestination(id, { is_sunset_spot: isSunsetSpot });
   }
+
+  const sunsetPickerDay = sunsetPickerDayId ? days.find((d) => d.id === sunsetPickerDayId) ?? null : null;
 
   if (loading) {
     return (
@@ -58,13 +95,25 @@ export default function PlanificarPage() {
           const stops = byDay.get(day.id) ?? [];
           const missingSunset = stops.length > 0 && !stops.some((s) => s.is_sunset_spot);
           return (
-            <details key={day.id} className="rounded-md border border-border" open={stops.length > 0}>
+            <details key={day.id} className="rounded-md border border-border">
               <summary className="flex cursor-pointer items-center justify-between px-3 py-3 font-bold">
                 <span>
                   {day.title} <span className="font-normal text-ink/50">— {day.date}</span>
                 </span>
                 <span className="flex items-center gap-2 text-sm font-normal text-ink/50">
-                  {missingSunset && <TriangleAlert size={16} className="text-danger" aria-label="Falta sunset spot" />}
+                  {missingSunset && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSunsetPickerDayId(day.id);
+                      }}
+                      aria-label={`Falta sunset spot para ${day.title} — elegir uno`}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-danger cursor-pointer"
+                    >
+                      <TriangleAlert size={16} aria-hidden />
+                    </button>
+                  )}
                   {stops.length}
                 </span>
               </summary>
@@ -85,9 +134,9 @@ export default function PlanificarPage() {
           );
         })}
 
-        <details className="rounded-md border border-border" open={backlog.length > 0}>
+        <details className="rounded-md border border-border">
           <summary className="flex cursor-pointer items-center justify-between px-3 py-3 font-bold">
-            <span>Backlog</span>
+            <span>Destinos sin asignar</span>
             <span className="text-sm font-normal text-ink/50">{backlog.length}</span>
           </summary>
           <ul className="flex flex-col gap-2 border-t border-border p-3">
@@ -100,6 +149,7 @@ export default function PlanificarPage() {
                 onMoveToDay={handleMoveToDay}
                 onToggleSunset={handleToggleSunset}
                 onDelete={deleteDestination}
+                suggestedDay={suggestDayFor(d)}
               />
             ))}
           </ul>
@@ -107,18 +157,36 @@ export default function PlanificarPage() {
       </div>
 
       <button
-        onClick={() => setFormOpen(true)}
+        onClick={() => openAddForm(null, false)}
         aria-label="Agregar destino"
         className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-cta text-cta-foreground shadow-lg cursor-pointer"
       >
         <Plus size={26} aria-hidden />
       </button>
 
+      {sunsetPickerDay && (
+        <SunsetSpotPicker
+          day={sunsetPickerDay}
+          stops={byDay.get(sunsetPickerDay.id) ?? []}
+          onClose={() => setSunsetPickerDayId(null)}
+          onMarkExisting={(id) => {
+            handleToggleSunset(id, true);
+            setSunsetPickerDayId(null);
+          }}
+          onAddNew={() => {
+            const dayId = sunsetPickerDay.id;
+            setSunsetPickerDayId(null);
+            openAddForm(dayId, true);
+          }}
+        />
+      )}
+
       <DestinationForm
         open={formOpen}
         onClose={() => setFormOpen(false)}
         days={days}
-        defaultDayId={null}
+        defaultDayId={formDefaultDayId}
+        forceSunsetSpot={formForceSunset}
         onAdd={addDestination}
       />
     </div>

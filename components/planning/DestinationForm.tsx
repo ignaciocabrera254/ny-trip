@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LoaderCircle, MapPin, Search, X } from "lucide-react";
 import DynamicTripMap from "@/components/map/DynamicTripMap";
 import { searchPlace, type NominatimResult } from "@/lib/geo/nominatim";
@@ -11,35 +11,61 @@ type Props = {
   onClose: () => void;
   days: Day[];
   defaultDayId: string | null;
+  forceSunsetSpot?: boolean;
   onAdd: (input: Omit<Destination, "id" | "visited" | "sort_order">) => Promise<void>;
 };
 
 const CATEGORIES = Object.keys(CATEGORY_LABEL) as DestinationCategory[];
 
-export default function DestinationForm({ open, onClose, days, defaultDayId, onAdd }: Props) {
+export default function DestinationForm({
+  open,
+  onClose,
+  days,
+  defaultDayId,
+  forceSunsetSpot,
+  onAdd,
+}: Props) {
   const [mode, setMode] = useState<"search" | "map">("search");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<NominatimResult[]>([]);
+  const [searched, setSearched] = useState(false);
   const [picked, setPicked] = useState<LatLng | null>(null);
   const [name, setName] = useState("");
   const [category, setCategory] = useState<DestinationCategory>("otro");
   const [notes, setNotes] = useState("");
   const [dayId, setDayId] = useState<string>(defaultDayId ?? "backlog");
   const [isSunsetSpot, setIsSunsetSpot] = useState(false);
+  const [opensAt, setOpensAt] = useState("");
+  const [closesAt, setClosesAt] = useState("");
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // The form component stays mounted across opens (parent toggles `open`, not
+  // presence), so defaults must be re-applied here rather than via useState
+  // initializers, which only run once on first mount.
+  useEffect(() => {
+    if (open) {
+      reset();
+      setDayId(defaultDayId ?? "backlog");
+      setIsSunsetSpot(!!forceSunsetSpot);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   if (!open) return null;
 
   function reset() {
     setQuery("");
     setResults([]);
+    setSearched(false);
     setPicked(null);
     setName("");
     setCategory("otro");
     setNotes("");
     setIsSunsetSpot(false);
+    setOpensAt("");
+    setClosesAt("");
     setMode("search");
   }
 
@@ -48,6 +74,7 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
     setSearching(true);
     try {
       setResults(await searchPlace(query));
+      setSearched(true);
     } finally {
       setSearching(false);
     }
@@ -57,6 +84,7 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
     setPicked({ lat: r.lat, lng: r.lng });
     setName(r.display_name.split(",")[0]);
     setResults([]);
+    setSearched(false);
   }
 
   async function handleSubmit() {
@@ -72,6 +100,8 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
         notes: notes.trim() || null,
         is_sunset_spot: isSunsetSpot,
         day_id: dayId === "backlog" ? null : dayId,
+        opens_at: opensAt || null,
+        closes_at: closesAt || null,
       });
       reset();
       onClose();
@@ -89,7 +119,7 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <button aria-label="Cerrar" onClick={onClose} className="backdrop-button absolute inset-0 bg-ink/50 cursor-pointer" />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-t-2xl border-t-2 border-ink bg-paper p-5 pb-8 shadow-2xl">
+      <div className="relative z-10 flex min-h-[50vh] max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-t-2xl border-t-2 border-ink bg-paper p-5 pb-8 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold uppercase tracking-wide">Nuevo destino</h2>
           <button
@@ -125,9 +155,12 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
             <div className="flex gap-2">
               <input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setSearched(false);
+                }}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Nombre del lugar"
+                placeholder="Nombre del lugar o dirección"
                 className="h-11 flex-1 rounded-md border border-border px-3 text-base"
               />
               <button
@@ -155,6 +188,20 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
                   </li>
                 ))}
               </ul>
+            )}
+            {searched && !searching && results.length === 0 && (
+              <div className="mt-2 rounded-md border border-border p-3 text-sm">
+                <p className="text-ink/70">No encontramos ese lugar.</p>
+                <button
+                  onClick={() => {
+                    if (!name.trim()) setName(query.trim());
+                    setMode("map");
+                  }}
+                  className="mt-1 font-bold underline cursor-pointer"
+                >
+                  Tocar el mapa para ubicarlo y ponerle nombre
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -236,6 +283,32 @@ export default function DestinationForm({ open, onClose, days, defaultDayId, onA
               />
               Es el sunset spot del día
             </label>
+
+            <div className="flex gap-3">
+              <label className="flex flex-1 flex-col gap-1 text-sm font-semibold">
+                Abre (opcional)
+                <input
+                  type="time"
+                  value={opensAt}
+                  onChange={(e) => setOpensAt(e.target.value)}
+                  className="h-11 rounded-md border border-border px-3 text-base font-normal"
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1 text-sm font-semibold">
+                Cierra (opcional)
+                <input
+                  type="time"
+                  value={closesAt}
+                  onChange={(e) => setClosesAt(e.target.value)}
+                  className="h-11 rounded-md border border-border px-3 text-base font-normal"
+                />
+              </label>
+            </div>
+            {closesAt && (
+              <p className="text-xs text-ink/50">
+                Se usa solo para un aviso estimado si la llegada calculada cae después del cierre.
+              </p>
+            )}
 
             {submitError && (
               <p role="alert" className="text-sm font-semibold text-danger">
