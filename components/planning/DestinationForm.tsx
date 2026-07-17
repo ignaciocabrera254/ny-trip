@@ -153,16 +153,31 @@ export default function DestinationForm({
         {mode === "search" && (
           <div className="mb-3">
             <div className="flex gap-2">
-              <input
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setSearched(false);
-                }}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Nombre del lugar o dirección"
-                className="h-11 flex-1 rounded-md border border-border px-3 text-base"
-              />
+              <div className="relative flex-1">
+                <input
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setSearched(false);
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  placeholder="Nombre del lugar o dirección"
+                  className="h-11 w-full rounded-md border border-border pl-3 pr-10 text-base"
+                />
+                {query.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setQuery("");
+                      setSearched(false);
+                      setResults([]);
+                    }}
+                    aria-label="Borrar búsqueda"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-ink/50 hover:text-ink cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
               <button
                 onClick={handleSearch}
                 aria-label="Buscar lugar"
