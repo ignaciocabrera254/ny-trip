@@ -23,7 +23,7 @@ function readCache(): Cache | null {
  */
 export async function fetchDailyWeather(dateStr: string): Promise<DailyWeather | null> {
   const cached = readCache();
-  if (cached) return cached.byDate[dateStr] ?? null;
+  if (cached?.byDate[dateStr]) return cached.byDate[dateStr];
 
   try {
     const url = new URL("https://api.open-meteo.com/v1/forecast");
@@ -31,6 +31,11 @@ export async function fetchDailyWeather(dateStr: string): Promise<DailyWeather |
     url.searchParams.set("longitude", "-73.99");
     url.searchParams.set("daily", "temperature_2m_max,precipitation_probability_max");
     url.searchParams.set("timezone", "America/New_York");
+    // Without these, Open-Meteo defaults to a window centered on the server's
+    // current date — for a trip date weeks out, that's a different day than
+    // the one being asked about, or (once close enough) subtly the wrong one.
+    url.searchParams.set("start_date", dateStr);
+    url.searchParams.set("end_date", dateStr);
 
     const res = await fetch(url.toString());
     if (!res.ok) return null;
@@ -40,7 +45,10 @@ export async function fetchDailyWeather(dateStr: string): Promise<DailyWeather |
     const maxTemp: number[] = json.daily?.temperature_2m_max ?? [];
     const rainChance: number[] = json.daily?.precipitation_probability_max ?? [];
 
-    const byDate: Record<string, DailyWeather> = {};
+    // Merge into whatever's already cached — each call now only ever covers
+    // one date, so replacing the whole blob would drop every other day the
+    // user already flipped through this session.
+    const byDate: Record<string, DailyWeather> = { ...(cached?.byDate ?? {}) };
     time.forEach((t, i) => {
       byDate[t] = { maxTempC: maxTemp[i], rainChancePct: rainChance[i] };
     });
