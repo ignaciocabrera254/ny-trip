@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef } from "react";
-import L from "leaflet";
+import { useEffect, useState, useRef } from "react";
+import { APIProvider, Map, AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
 import type { LatLng, Restroom } from "@/lib/types";
 import {
-  bulletIcon,
-  homeIcon,
-  pickedPointIcon,
-  restroomIcon,
-  sunsetIcon,
-} from "@/components/map/markerIcons";
+  BulletIcon,
+  HomeIcon,
+  PickedPointIcon,
+  RestroomIcon,
+  SunsetIcon,
+} from "@/components/map/MarkerIcons";
 
 export type MapStop = {
   id: string;
@@ -34,6 +34,71 @@ type TripMapProps = {
   className?: string;
 };
 
+// Internal component to handle drawing polylines using google.maps API
+function MapPolyline({
+  origin,
+  stops,
+  drawRoute,
+}: {
+  origin?: LatLng;
+  stops: MapStop[];
+  drawRoute: boolean;
+}) {
+  const map = useMap();
+  const polylineRef = useRef<google.maps.Polyline | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+
+    if (!drawRoute || stops.length === 0) {
+      if (polylineRef.current) {
+        polylineRef.current.setMap(null);
+        polylineRef.current = null;
+      }
+      return;
+    }
+
+    const path = [
+      ...(origin ? [origin] : []),
+      ...stops.map((s) => s.position),
+    ];
+
+    if (!polylineRef.current) {
+      polylineRef.current = new google.maps.Polyline({
+        path,
+        strokeColor: "#21262C",
+        strokeOpacity: 0.7,
+        strokeWeight: 2,
+        icons: [
+          {
+            icon: {
+              path: "M 0,-1 0,1",
+              strokeOpacity: 1,
+              scale: 4,
+            },
+            offset: "0",
+            repeat: "20px",
+          },
+        ],
+        map,
+      });
+      // To create dashed effect we set strokeOpacity of line to 0, and use icons
+      polylineRef.current.setOptions({ strokeOpacity: 0 });
+    } else {
+      polylineRef.current.setPath(path);
+    }
+
+    return () => {
+      if (polylineRef.current) {
+        polylineRef.current.setMap(null);
+        polylineRef.current = null;
+      }
+    };
+  }, [map, origin, stops, drawRoute]);
+
+  return null;
+}
+
 export default function TripMap({
   center,
   zoom = 13,
@@ -46,130 +111,69 @@ export default function TripMap({
   onMapClick,
   className,
 }: TripMapProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const layersRef = useRef<{
-    stops: L.LayerGroup;
-    restrooms: L.LayerGroup;
-    misc: L.LayerGroup;
-  } | null>(null);
-  const handleMapClick = useEffectEvent((point: LatLng) => {
-    onMapClick?.(point);
-  });
+  const [apiKey] = useState(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "");
 
-  // Init map once.
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-
-    const map = L.map(containerRef.current, {
-      center: [center.lat, center.lng],
-      zoom,
-    });
-
-    // CARTO's free Positron basemap: same OpenStreetMap data, no API key/billing,
-    // and a cleaner render that keeps the numbered bullets legible under sun.
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      subdomains: "abcd",
-      maxZoom: 20,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    }).addTo(map);
-
-    const stopsLayer = L.layerGroup().addTo(map);
-    const restroomsLayer = L.layerGroup();
-    const miscLayer = L.layerGroup().addTo(map);
-
-    layersRef.current = { stops: stopsLayer, restrooms: restroomsLayer, misc: miscLayer };
-    mapRef.current = map;
-
-    map.on("click", (e: L.LeafletMouseEvent) => {
-      handleMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
-    });
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
-      layersRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Recenter when the caller changes day/context.
-  useEffect(() => {
-    mapRef.current?.setView([center.lat, center.lng], zoom);
-  }, [center.lat, center.lng, zoom]);
-
-  // Redraw stops, origin, and route line.
-  useEffect(() => {
-    const layers = layersRef.current;
-    if (!layers) return;
-
-    layers.stops.clearLayers();
-    layers.misc.clearLayers();
-
-    if (origin) {
-      L.marker([origin.lat, origin.lng], { icon: homeIcon() })
-        .bindPopup("Casa — Jersey City")
-        .addTo(layers.misc);
-    }
-
-    stops.forEach((stop, index) => {
-      const icon = stop.isSunsetSpot
-        ? sunsetIcon(stop.visited)
-        : bulletIcon(index + 1, stop.color, stop.visited);
-      const marker = L.marker([stop.position.lat, stop.position.lng], { icon }).addTo(
-        layers.stops
-      );
-      if (stop.popup) marker.bindPopup(stop.popup);
-      else marker.bindPopup(stop.label);
-    });
-
-    if (drawRoute && stops.length > 0) {
-      const path: L.LatLngExpression[] = [
-        ...(origin ? [[origin.lat, origin.lng] as L.LatLngExpression] : []),
-        ...stops.map((s) => [s.position.lat, s.position.lng] as L.LatLngExpression),
-      ];
-      L.polyline(path, {
-        color: "#21262C",
-        weight: 2,
-        dashArray: "6 6",
-        opacity: 0.7,
-      }).addTo(layers.misc);
-    }
-
-    if (pickedPoint) {
-      L.marker([pickedPoint.lat, pickedPoint.lng], { icon: pickedPointIcon() }).addTo(
-        layers.misc
-      );
-    }
-  }, [stops, origin, drawRoute, pickedPoint]);
-
-  // Toggle + redraw restroom layer.
-  useEffect(() => {
-    const map = mapRef.current;
-    const layers = layersRef.current;
-    if (!map || !layers) return;
-
-    layers.restrooms.clearLayers();
-
-    if (showRestrooms) {
-      restrooms.forEach((r) => {
-        L.marker([r.lat, r.lng], { icon: restroomIcon(r.source) })
-          .bindPopup(r.name)
-          .addTo(layers.restrooms);
-      });
-      if (!map.hasLayer(layers.restrooms)) layers.restrooms.addTo(map);
-    } else if (map.hasLayer(layers.restrooms)) {
-      map.removeLayer(layers.restrooms);
-    }
-  }, [restrooms, showRestrooms]);
+  if (!apiKey) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-muted text-sm font-bold text-ink/60">
+        Falta NEXT_PUBLIC_GOOGLE_MAPS_API_KEY en .env.local
+      </div>
+    );
+  }
 
   return (
-    <div
-      ref={containerRef}
-      role="application"
-      aria-label="Mapa del recorrido"
-      className={className ?? "h-full w-full"}
-    />
+    <div className={className ?? "h-full w-full"}>
+      <APIProvider apiKey={apiKey}>
+        <Map
+          defaultCenter={center}
+          center={center}
+          defaultZoom={zoom}
+          zoom={zoom}
+          mapId="sundy_map_id" // required for AdvancedMarker
+          disableDefaultUI
+          onClick={(e) => {
+            if (e.detail.latLng && onMapClick) {
+              onMapClick({ lat: e.detail.latLng.lat, lng: e.detail.latLng.lng });
+            }
+          }}
+        >
+          {origin && (
+            <AdvancedMarker position={origin} title="Casa — Jersey City">
+              <HomeIcon />
+            </AdvancedMarker>
+          )}
+
+          {stops.map((stop, index) => (
+            <AdvancedMarker
+              key={stop.id}
+              position={stop.position}
+              title={stop.popup || stop.label}
+              zIndex={stop.isSunsetSpot ? 100 : 50}
+            >
+              {stop.isSunsetSpot ? (
+                <SunsetIcon visited={stop.visited} />
+              ) : (
+                <BulletIcon number={index + 1} color={stop.color} visited={stop.visited} />
+              )}
+            </AdvancedMarker>
+          ))}
+
+          {showRestrooms &&
+            restrooms.map((r) => (
+              <AdvancedMarker key={r.id} position={{ lat: r.lat, lng: r.lng }} title={r.name}>
+                <RestroomIcon source={r.source} />
+              </AdvancedMarker>
+            ))}
+
+          {pickedPoint && (
+            <AdvancedMarker position={pickedPoint}>
+              <PickedPointIcon />
+            </AdvancedMarker>
+          )}
+
+          <MapPolyline origin={origin} stops={stops} drawRoute={drawRoute} />
+        </Map>
+      </APIProvider>
+    </div>
   );
 }
