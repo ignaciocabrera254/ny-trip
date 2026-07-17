@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LoaderCircle, MapPin, Search, X } from "lucide-react";
+import { LoaderCircle, MapPin, Search, Sparkles, X } from "lucide-react";
 import DynamicTripMap from "@/components/map/DynamicTripMap";
-import { searchPlace, type SearchResult } from "@/lib/geo/geocoding";
+import { getPlaceHours, searchPlace, type SearchResult } from "@/lib/geo/geocoding";
 import { CATEGORY_LABEL, HOME, type Day, type Destination, type DestinationCategory, type LatLng } from "@/lib/types";
 
 type Props = {
@@ -38,6 +38,9 @@ export default function DestinationForm({
   const [isSunsetSpot, setIsSunsetSpot] = useState(false);
   const [opensAt, setOpensAt] = useState("");
   const [closesAt, setClosesAt] = useState("");
+  const [placeId, setPlaceId] = useState<string | null>(null);
+  const [loadingHours, setLoadingHours] = useState(false);
+  const [hoursNotFound, setHoursNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -66,6 +69,8 @@ export default function DestinationForm({
     setIsSunsetSpot(false);
     setOpensAt("");
     setClosesAt("");
+    setPlaceId(null);
+    setHoursNotFound(false);
     setMode("search");
   }
 
@@ -82,9 +87,39 @@ export default function DestinationForm({
 
   function pickResult(r: SearchResult) {
     setPicked({ lat: r.lat, lng: r.lng });
-    setName(r.display_name.split(",")[0]);
+    // The Geocoding API returns a street address, not a place name (that's
+    // the Places API) — what the person actually searched for is the best
+    // guess at a name, e.g. "B&H Photo Video" instead of "420 9th Ave".
+    setName(query.trim());
+    setPlaceId(r.placeId ?? null);
+    setHoursNotFound(false);
     setResults([]);
     setSearched(false);
+  }
+
+  // Which weekday (0=Sun..6=Sat, Google's convention) to pull hours for: the
+  // day this destination is being assigned to, or today when it's unassigned.
+  function targetWeekday(): number {
+    const day = days.find((d) => d.id === dayId);
+    if (!day) return new Date().getDay();
+    return new Date(`${day.date}T12:00:00-04:00`).getDay();
+  }
+
+  async function handleFetchHours() {
+    if (!placeId) return;
+    setLoadingHours(true);
+    setHoursNotFound(false);
+    try {
+      const hours = await getPlaceHours(placeId, targetWeekday());
+      if (hours.opensAt || hours.closesAt) {
+        if (hours.opensAt) setOpensAt(hours.opensAt);
+        if (hours.closesAt) setClosesAt(hours.closesAt);
+      } else {
+        setHoursNotFound(true);
+      }
+    } finally {
+      setLoadingHours(false);
+    }
   }
 
   async function handleSubmit() {
@@ -319,6 +354,24 @@ export default function DestinationForm({
                 />
               </label>
             </div>
+
+            {placeId && (
+              <button
+                onClick={handleFetchHours}
+                disabled={loadingHours}
+                className="flex h-11 items-center justify-center gap-1.5 rounded-full border-2 border-ink text-sm font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingHours ? (
+                  <LoaderCircle className="animate-spin" size={16} aria-hidden />
+                ) : (
+                  <Sparkles size={16} aria-hidden />
+                )}
+                Completar con Google Maps
+              </button>
+            )}
+            {hoursNotFound && (
+              <p className="text-xs text-ink/50">Google Maps no tiene horario registrado para este lugar.</p>
+            )}
             {closesAt && (
               <p className="text-xs text-ink/50">
                 Se usa solo para un aviso estimado si la llegada calculada cae después del cierre.
