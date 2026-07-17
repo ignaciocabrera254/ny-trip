@@ -26,8 +26,11 @@ export async function searchPlace(query: string): Promise<SearchResult[]> {
   url.searchParams.set("language", "es"); // Return results in Spanish
 
   const res = await fetch(url.toString(), {
-    // No-store ensures we don't aggressively cache identical requests if we don't want to,
-    // though geocoding can be cached. Let's just use default nextjs fetch caching.
+    headers: {
+      // Pasamos un referer válido para que Google Maps API acepte la petición
+      // con la restricción de "Sitios web" activada.
+      Referer: "https://ny-trip-ten.vercel.app/",
+    },
   });
 
   if (!res.ok) throw new Error("Google Geocoding request failed");
